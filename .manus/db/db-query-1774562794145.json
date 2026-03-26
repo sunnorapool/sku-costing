@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO skus (sku, description, status, sort_order, createdAt, updatedAt) VALUES ('TEST_SKU_001', 'Test SKU', 'active', 0, NOW(), NOW()); INSERT INTO sku_pricing (sku_id, srp_margin, createdAt, updatedAt) VALUES (LAST_INSERT_ID(), 0.5, NOW(), NOW()); DELETE FROM sku_pricing WHERE sku_id = (SELECT id FROM skus WHERE sku = 'TEST_SKU_001'); DELETE FROM skus WHERE sku = 'TEST_SKU_001';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2DSiSUV3UUfXaKc.d3aa08360596 --database fkkkVXv7jzuKH7e858JN9a --execute INSERT INTO skus (sku, description, status, sort_order, createdAt, updatedAt) VALUES ('TEST_SKU_001', 'Test SKU', 'active', 0, NOW(), NOW()); INSERT INTO sku_pricing (sku_id, srp_margin, createdAt, updatedAt) VALUES (LAST_INSERT_ID(), 0.5, NOW(), NOW()); DELETE FROM sku_pricing WHERE sku_id = (SELECT id FROM skus WHERE sku = 'TEST_SKU_001'); DELETE FROM skus WHERE sku = 'TEST_SKU_001';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 133
+}

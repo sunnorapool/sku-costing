@@ -63,3 +63,9 @@
 - [x] Vitest: export.csv
 - [x] Vitest: margin calculation logic
 - [x] Vitest: auth.logout (from template)
+
+## Data Import
+- [x] Extract all SKU rows from Google Sheets (2026 Official tab)
+- [x] Parse all columns: SKU, Description, Product Group, Var1, Var2, all pricing/cost/margin fields
+- [x] Seed data directly into the database via SQL (6,778 SKUs imported)
+- [x] Verify data appears correctly in the app

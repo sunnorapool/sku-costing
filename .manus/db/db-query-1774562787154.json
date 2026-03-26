@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'sku_pricing' AND COLUMN_NAME = 'srp_margin';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2DSiSUV3UUfXaKc.d3aa08360596 --database fkkkVXv7jzuKH7e858JN9a --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'sku_pricing' AND COLUMN_NAME = 'srp_margin';",
+  "rows": [
+    {
+      "COLUMN_NAME": "srp_margin"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nsrp_margin\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

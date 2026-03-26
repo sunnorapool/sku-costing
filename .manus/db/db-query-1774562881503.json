@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE sku_pricing\n  ADD COLUMN IF NOT EXISTS srp_margin decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS tariff_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS tariff_amt decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS duty_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS duty_amt decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS freight decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS freight_alt decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS load_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS bd_license_fee_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS asia_margin_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS bd_fee decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS notes text DEFAULT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2DSiSUV3UUfXaKc.d3aa08360596 --database fkkkVXv7jzuKH7e858JN9a --execute ALTER TABLE sku_pricing\n  ADD COLUMN IF NOT EXISTS srp_margin decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS tariff_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS tariff_amt decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS duty_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS duty_amt decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS freight decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS freight_alt decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS load_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS bd_license_fee_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS asia_margin_pct decimal(8,4) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS bd_fee decimal(10,2) DEFAULT NULL,\n  ADD COLUMN IF NOT EXISTS notes text DEFAULT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 56
+}
