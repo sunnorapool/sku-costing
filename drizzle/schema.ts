@@ -1,17 +1,16 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  decimal,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  json,
+} from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +24,125 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// Status flags matching the spreadsheet rows 1-4 pattern
+export const skus = mysqlTable("skus", {
+  id: int("id").autoincrement().primaryKey(),
+  sku: varchar("sku", { length: 64 }).notNull().unique(),
+  description: text("description"),
+  productGroup: varchar("product_group", { length: 128 }),
+  var1: varchar("var1", { length: 128 }), // e.g. HP, BTU rating
+  var2: varchar("var2", { length: 128 }), // e.g. speed, cord type
+  status: mysqlEnum("status", ["active", "done", "new_model", "missing", "discontinued"]).default("active").notNull(),
+  sortOrder: int("sort_order").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Sku = typeof skus.$inferSelect;
+export type InsertSku = typeof skus.$inferInsert;
+
+// All pricing and cost columns from the spreadsheet
+export const skuPricing = mysqlTable("sku_pricing", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+
+  // Historical SRP pricing
+  srp2023: decimal("srp_2023", { precision: 10, scale: 2 }),
+  srp2024: decimal("srp_2024", { precision: 10, scale: 2 }),
+
+  // MAP and competitive pricing
+  map: decimal("map", { precision: 10, scale: 2 }),
+  comps2024: decimal("comps_2024", { precision: 10, scale: 2 }),
+  srp2024Amzn: decimal("srp_2024_amzn", { precision: 10, scale: 2 }),
+
+  // Wholesale pricing
+  wholesalePoolCity: decimal("wholesale_pool_city", { precision: 10, scale: 2 }),
+  bdWholesaleMarginPct: decimal("bd_wholesale_margin_pct", { precision: 8, scale: 4 }),
+
+  // Cost data
+  fob26Costing: decimal("fob_26_costing", { precision: 10, scale: 2 }),
+  factoryCost: decimal("factory_cost", { precision: 10, scale: 2 }),
+
+  // PPTG pricing
+  pptg25WholesalePrice: decimal("pptg_25_wholesale_price", { precision: 10, scale: 2 }),
+
+  // BD wholesale retail prices
+  bdWholesaleRetail24: decimal("bd_wholesale_retail_24", { precision: 10, scale: 2 }),
+  bdWholesaleRetail25: decimal("bd_wholesale_retail_25", { precision: 10, scale: 2 }),
+
+  // Adjusted and YoY
+  adjusted: decimal("adjusted", { precision: 10, scale: 2 }),
+  inc2425Pct: decimal("inc_24_25_pct", { precision: 8, scale: 4 }),
+
+  // Margin calculations
+  bdMargin: decimal("bd_margin", { precision: 10, scale: 2 }),
+  bdMarginPct: decimal("bd_margin_pct", { precision: 8, scale: 4 }),
+
+  // Landed costs
+  landedCost: decimal("landed_cost", { precision: 10, scale: 2 }),
+  landedPlusBdFees: decimal("landed_plus_bd_fees", { precision: 10, scale: 2 }),
+
+  // Final margin
+  margin: decimal("margin", { precision: 10, scale: 2 }),
+  srpMargin: decimal("srp_margin", { precision: 10, scale: 2 }),
+
+  // Tariff & Duty
+  tariffPct: decimal("tariff_pct", { precision: 8, scale: 4 }),
+  tariffAmt: decimal("tariff_amt", { precision: 10, scale: 2 }),
+  dutyPct: decimal("duty_pct", { precision: 8, scale: 4 }),
+  dutyAmt: decimal("duty_amt", { precision: 10, scale: 2 }),
+
+  // Freight
+  freight: decimal("freight", { precision: 10, scale: 2 }),
+  freightAlt: decimal("freight_alt", { precision: 10, scale: 2 }),
+
+  // Load & Fees
+  loadPct: decimal("load_pct", { precision: 8, scale: 4 }),
+  bdLicenseFeePct: decimal("bd_license_fee_pct", { precision: 8, scale: 4 }),
+  asiaMarginPct: decimal("asia_margin_pct", { precision: 8, scale: 4 }),
+  bdFee: decimal("bd_fee", { precision: 10, scale: 2 }),
+
+  // Notes
+  notes: text("notes"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SkuPricing = typeof skuPricing.$inferSelect;
+export type InsertSkuPricing = typeof skuPricing.$inferInsert;
+
+// Per-SKU version history - tracks individual SKU changes
+export const skuVersions = mysqlTable("sku_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+  userId: int("user_id"), // null for AI/system changes
+  changeType: mysqlEnum("change_type", ["create", "update", "delete", "ai_prompt", "import", "revert"]).notNull(),
+  changeDescription: text("change_description"),
+  promptText: text("prompt_text"),
+  previousData: json("previous_data"),
+  newData: json("new_data"),
+  affectedSkuIds: json("affected_sku_ids"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SkuVersion = typeof skuVersions.$inferSelect;
+export type InsertSkuVersion = typeof skuVersions.$inferInsert;
+
+// Global version snapshots - captures the full state of all SKUs at a point in time
+export const globalVersions = mysqlTable("global_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  versionName: varchar("version_name", { length: 256 }),
+  userId: int("user_id"),
+  userName: varchar("user_name", { length: 256 }),
+  changeType: mysqlEnum("change_type", ["manual_edit", "ai_prompt", "bulk_import", "restore"]).default("manual_edit").notNull(),
+  changeDescription: text("change_description"),
+  promptText: text("prompt_text"),
+  affectedCount: int("affected_count").default(0),
+  snapshotData: json("snapshot_data"),
+  affectedSkuIds: json("affected_sku_ids"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type GlobalVersion = typeof globalVersions.$inferSelect;
+export type InsertGlobalVersion = typeof globalVersions.$inferInsert;
