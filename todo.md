@@ -20,7 +20,7 @@
 
 ## Frontend - SKU Table Page
 - [x] Full-width data table with all columns from spreadsheet
-- [x] Column groups (SKU Info, Pricing, Costs, Margins)
+- [x] Column groups (SKU Info, Pricing, Costs, Margins, Tariff & Duty, Freight & Fees, Notes)
 - [x] Sticky header and frozen first columns (SKU, Description)
 - [x] Color-coded status badges (DONE, NEW MODEL, Missing, active)
 - [x] Search bar (by SKU or description)
@@ -58,7 +58,7 @@
 - [x] Vitest: auth.me (authenticated and unauthenticated)
 - [x] Vitest: skus.list (empty, with filters)
 - [x] Vitest: skus.create (admin, non-admin, unauthenticated)
-- [x] Vitest: versions.list
+- [x] Vitest: versions.list (with search and changeType filters)
 - [x] Vitest: import.csv (admin, non-admin)
 - [x] Vitest: export.csv
 - [x] Vitest: margin calculation logic

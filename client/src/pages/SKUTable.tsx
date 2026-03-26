@@ -451,6 +451,20 @@ export default function SKUTable() {
                 <th className="px-3 py-2.5 text-right border-b bg-emerald-50 min-w-[110px]">Landed Cost</th>
                 <th className="px-3 py-2.5 text-right border-b bg-emerald-50 min-w-[130px]">Landed + BD Fees</th>
                 <th className="px-3 py-2.5 text-right border-b bg-emerald-50 min-w-[90px]">Margin</th>
+                {/* Tariff & Duty Group */}
+                <th className="px-3 py-2.5 text-right border-b border-l bg-orange-50 min-w-[90px]">Tariff %</th>
+                <th className="px-3 py-2.5 text-right border-b bg-orange-50 min-w-[100px]">Tariff Amt</th>
+                <th className="px-3 py-2.5 text-right border-b bg-orange-50 min-w-[80px]">Duty %</th>
+                <th className="px-3 py-2.5 text-right border-b bg-orange-50 min-w-[90px]">Duty Amt</th>
+                {/* Freight & Fees Group */}
+                <th className="px-3 py-2.5 text-right border-b border-l bg-purple-50 min-w-[90px]">Freight</th>
+                <th className="px-3 py-2.5 text-right border-b bg-purple-50 min-w-[90px]">Freight Alt</th>
+                <th className="px-3 py-2.5 text-right border-b bg-purple-50 min-w-[80px]">Load %</th>
+                <th className="px-3 py-2.5 text-right border-b bg-purple-50 min-w-[120px]">BD License Fee %</th>
+                <th className="px-3 py-2.5 text-right border-b bg-purple-50 min-w-[110px]">Asia Margin %</th>
+                <th className="px-3 py-2.5 text-right border-b bg-purple-50 min-w-[80px]">BD Fee</th>
+                {/* Notes */}
+                <th className="px-3 py-2.5 text-left border-b border-l bg-slate-50 min-w-[200px]">Notes</th>
                 {isAdmin && <th className="px-3 py-2.5 text-center border-b border-l bg-slate-100 min-w-[80px]">Actions</th>}
               </tr>
             </thead>
@@ -498,6 +512,24 @@ export default function SKUTable() {
                   <td className="px-3 py-2 text-right text-xs">{fmt(row.pricing?.landedCost)}</td>
                   <td className="px-3 py-2 text-right text-xs">{fmt(row.pricing?.landedPlusBdFees)}</td>
                   <td className={`px-3 py-2 text-right text-xs ${marginClass(row.pricing?.margin)}`}>{fmt(row.pricing?.margin)}</td>
+                  {/* Tariff & Duty */}
+                  <td className="px-3 py-2 text-right text-xs border-l">{fmtPct((row.pricing as any)?.tariffPct)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmt((row.pricing as any)?.tariffAmt)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmtPct((row.pricing as any)?.dutyPct)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmt((row.pricing as any)?.dutyAmt)}</td>
+                  {/* Freight & Fees */}
+                  <td className="px-3 py-2 text-right text-xs border-l">{fmt((row.pricing as any)?.freight)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmt((row.pricing as any)?.freightAlt)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmtPct((row.pricing as any)?.loadPct)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmtPct((row.pricing as any)?.bdLicenseFeePct)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmtPct((row.pricing as any)?.asiaMarginPct)}</td>
+                  <td className="px-3 py-2 text-right text-xs">{fmt((row.pricing as any)?.bdFee)}</td>
+                  {/* Notes */}
+                  <td className="px-3 py-2 text-xs border-l text-muted-foreground max-w-[200px]">
+                    <span className="block truncate" title={(row.pricing as any)?.notes ?? ""}>
+                      {(row.pricing as any)?.notes ?? "—"}
+                    </span>
+                  </td>
                   {isAdmin && (
                     <td className="px-3 py-2 border-l">
                       <div className="flex items-center justify-center gap-1">
