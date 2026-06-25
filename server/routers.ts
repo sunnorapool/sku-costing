@@ -110,6 +110,7 @@ export const appRouter = router({
           status: z.string().optional(),
           limit: z.number().min(1).max(500).optional(),
           offset: z.number().min(0).optional(),
+          ids: z.array(z.number()).optional(),
         }).optional()
       )
       .query(async ({ input }) => {
@@ -381,10 +382,54 @@ Instruction: ${input.prompt}`;
           });
         }
 
-        return { ...parsed, applied: true };
+                return { ...parsed, applied: true };
+      }),
+    filter: protectedProcedure
+      .input(z.object({ prompt: z.string().min(1).max(2000) }))
+      .mutation(async ({ ctx, input }) => {
+        adminOnly(ctx.user.role);
+        const { items } = await getSkuList({ limit: 500 });
+        const skuSummary = items.map(item => ({
+          id: item.sku.id,
+          sku: item.sku.sku,
+          description: item.sku.description,
+          productGroup: item.sku.productGroup,
+          bdMarginPct: item.pricing?.bdMarginPct,
+          srp2024: item.pricing?.srp2024,
+          map: item.pricing?.map,
+          landedCost: item.pricing?.landedCost,
+          status: item.sku.status,
+        }));
+        const systemPrompt = `You are a SKU data filter assistant. Given a list of SKUs and a filter request, return the IDs of matching SKUs and a brief explanation.\n\nRespond with JSON matching this schema:\n{\n  "matchingIds": [array of SKU id numbers],\n  "explanation": "brief description of what was matched"\n}`;
+        const userMsg = `SKU Data (${skuSummary.length} items):\n${JSON.stringify(skuSummary.slice(0, 300))}\n\nFilter request: ${input.prompt}`;
+        const resp = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMsg },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "filter_result",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  matchingIds: { type: "array", items: { type: "number" } },
+                  explanation: { type: "string" },
+                },
+                required: ["matchingIds", "explanation"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const rawContent = resp.choices[0]?.message?.content;
+        const content = typeof rawContent === 'string' ? rawContent : null;
+        if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "No response from AI" });
+        return JSON.parse(content) as { matchingIds: number[]; explanation: string };
       }),
   }),
-
   // ─── Version History ────────────────────────────────────────────────────────
   versions: router({
     list: publicProcedure

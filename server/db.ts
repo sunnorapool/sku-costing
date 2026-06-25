@@ -59,6 +59,7 @@ export async function getSkuList(filters?: {
   status?: string;
   limit?: number;
   offset?: number;
+  ids?: number[];
 }) {
   const db = await getDb();
   if (!db) return { items: [], total: 0 };
@@ -77,6 +78,9 @@ export async function getSkuList(filters?: {
   }
   if (filters?.status) {
     conditions.push(eq(skus.status, filters.status as any));
+  }
+  if (filters?.ids && filters.ids.length > 0) {
+    conditions.push(inArray(skus.id, filters.ids));
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;

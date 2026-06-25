@@ -69,3 +69,15 @@
 - [x] Parse all columns: SKU, Description, Product Group, Var1, Var2, all pricing/cost/margin fields
 - [x] Seed data directly into the database via SQL (6,778 SKUs imported)
 - [x] Verify data appears correctly in the app
+
+## Visual & AI Upgrade (Phase 2)
+- [x] Dark navy sidebar with poolpartstogo brand colors
+- [x] Global CSS theme overhaul (navy/blue palette, proper typography)
+- [x] Column group header bands with color coding
+- [x] Margin % cells color-coded red/yellow/green by value
+- [x] Table row hover states and alternating row colors
+- [x] Loading skeleton for table rows
+- [x] AI prompt: streaming word-by-word response
+- [x] AI prompt: live before/after diff preview (red/green highlights per row)
+- [x] AI prompt: natural language filter mode (show matching rows instantly)
+- [x] AI prompt: improved UX with mode toggle (Edit Mode vs Filter Mode)
