@@ -12,6 +12,11 @@ import {
   getVersionHistory,
   recordVersion,
   updateSku,
+  getChannels,
+  getChannelPricingMatrix,
+  getChannelPricesBySku,
+  upsertChannelPrice,
+  applyChannelPricingRule,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -556,6 +561,75 @@ Instruction: ${input.prompt}`;
       .query(async ({ input }) => {
         const { items } = await getSkuList({ ...input, limit: 5000 });
         return items;
+      }),
+  }),
+
+  // ─── Channel Pricing ───────────────────────────────────────────────────────────────────
+  channels: router({
+    list: publicProcedure
+      .input(z.object({ type: z.enum(['online', 'wholesale']).optional() }).optional())
+      .query(async ({ input }) => {
+        return getChannels(input?.type);
+      }),
+  }),
+
+  channelPrices: router({
+    matrix: publicProcedure
+      .input(
+        z.object({
+          channelType: z.enum(['online', 'wholesale']),
+          search: z.string().optional(),
+          productGroup: z.string().optional(),
+          limit: z.number().min(1).max(500).optional(),
+          offset: z.number().min(0).optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return getChannelPricingMatrix(input.channelType, {
+          search: input.search,
+          productGroup: input.productGroup,
+          limit: input.limit,
+          offset: input.offset,
+        });
+      }),
+
+    bySku: publicProcedure
+      .input(z.object({ skuId: z.number() }))
+      .query(async ({ input }) => {
+        return getChannelPricesBySku(input.skuId);
+      }),
+
+    upsert: publicProcedure
+      .input(
+        z.object({
+          skuId: z.number(),
+          channelId: z.number(),
+          price: z.string().nullable().optional(),
+          floorPrice: z.string().nullable().optional(),
+          ceilingPrice: z.string().nullable().optional(),
+          targetMarginPct: z.string().nullable().optional(),
+          competitorPrice: z.string().nullable().optional(),
+          competitorUrl: z.string().nullable().optional(),
+          notes: z.string().nullable().optional(),
+          effectiveDate: z.date().nullable().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Fetch landed cost for margin calculation
+        const skuData = await getSkuById(input.skuId);
+        const landedCost = skuData?.pricing?.landedCost ?? null;
+        return upsertChannelPrice({ ...input, landedCost });
+      }),
+
+    applyRule: publicProcedure
+      .input(
+        z.object({
+          channelId: z.number(),
+          targetMarginPct: z.number().min(0).max(1),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return applyChannelPricingRule(input.channelId, input.targetMarginPct);
       }),
   }),
 });

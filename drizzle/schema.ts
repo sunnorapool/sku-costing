@@ -146,3 +146,54 @@ export const globalVersions = mysqlTable("global_versions", {
 
 export type GlobalVersion = typeof globalVersions.$inferSelect;
 export type InsertGlobalVersion = typeof globalVersions.$inferInsert;
+
+// ─── Channel Pricing ─────────────────────────────────────────────────────────
+
+// Sales channels: online storefronts and wholesale partners
+export const channels = mysqlTable("channels", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  type: mysqlEnum("type", ["online", "wholesale"]).notNull(),
+  sortOrder: int("sort_order").default(0),
+  active: int("active").default(1).notNull(), // 1 = active, 0 = inactive
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Channel = typeof channels.$inferSelect;
+export type InsertChannel = typeof channels.$inferInsert;
+
+// Per-SKU price for each channel
+export const channelPrices = mysqlTable("channel_prices", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+  channelId: int("channel_id").notNull(),
+
+  // The actual selling price for this channel
+  price: decimal("price", { precision: 10, scale: 2 }),
+
+  // Guardrails
+  floorPrice: decimal("floor_price", { precision: 10, scale: 2 }),
+  ceilingPrice: decimal("ceiling_price", { precision: 10, scale: 2 }),
+
+  // Target margin drives rule-based pricing
+  targetMarginPct: decimal("target_margin_pct", { precision: 8, scale: 4 }),
+
+  // Calculated margin (price - landedCost) / price — stored for fast reads
+  marginPct: decimal("margin_pct", { precision: 8, scale: 4 }),
+  marginAmt: decimal("margin_amt", { precision: 10, scale: 2 }),
+
+  // Competitive research
+  competitorPrice: decimal("competitor_price", { precision: 10, scale: 2 }),
+  competitorUrl: text("competitor_url"),
+
+  // Free-form notes
+  notes: text("notes"),
+
+  effectiveDate: timestamp("effective_date"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChannelPrice = typeof channelPrices.$inferSelect;
+export type InsertChannelPrice = typeof channelPrices.$inferInsert;

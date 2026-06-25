@@ -20,13 +20,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, PanelLeft, History, Upload, Waves } from "lucide-react";
+import { LayoutDashboard, PanelLeft, History, Upload, Waves, DollarSign } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 
 const menuItems = [
   { icon: LayoutDashboard, label: "SKU Costing", path: "/" },
+  { icon: DollarSign, label: "Channel Pricing", path: "/channel-pricing" },
   { icon: History, label: "Version History", path: "/history" },
   { icon: Upload, label: "Import / Export", path: "/import-export" },
 ];

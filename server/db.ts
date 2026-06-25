@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertSku, InsertSkuPricing, InsertSkuVersion, skuPricing, skuVersions, skus, users } from "../drizzle/schema";
+import { InsertUser, InsertSku, InsertSkuPricing, InsertSkuVersion, skuPricing, skuVersions, skus, users, channels, channelPrices, Channel, ChannelPrice } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -327,4 +327,240 @@ export async function bulkImportSkus(
   }
 
   return { created, updated };
+}
+
+// ─── Channels ─────────────────────────────────────────────────────────────────────
+
+export async function getChannels(type?: 'online' | 'wholesale'): Promise<Channel[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(channels.active, 1)];
+  if (type) conditions.push(eq(channels.type, type));
+  return db.select().from(channels).where(and(...conditions)).orderBy(channels.sortOrder);
+}
+
+export async function upsertChannel(data: { name: string; type: 'online' | 'wholesale'; sortOrder?: number }): Promise<Channel> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.insert(channels).values({ ...data, active: 1 }).onDuplicateKeyUpdate({ set: { name: data.name, sortOrder: data.sortOrder ?? 0 } });
+  const [row] = await db.select().from(channels).where(eq(channels.name, data.name)).limit(1);
+  return row;
+}
+
+// ─── Channel Prices ──────────────────────────────────────────────────────────────
+
+export async function getChannelPricesBySku(skuId: number): Promise<(ChannelPrice & { channelName: string; channelType: string })[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: channelPrices.id,
+      skuId: channelPrices.skuId,
+      channelId: channelPrices.channelId,
+      price: channelPrices.price,
+      floorPrice: channelPrices.floorPrice,
+      ceilingPrice: channelPrices.ceilingPrice,
+      targetMarginPct: channelPrices.targetMarginPct,
+      marginPct: channelPrices.marginPct,
+      marginAmt: channelPrices.marginAmt,
+      competitorPrice: channelPrices.competitorPrice,
+      competitorUrl: channelPrices.competitorUrl,
+      notes: channelPrices.notes,
+      effectiveDate: channelPrices.effectiveDate,
+      createdAt: channelPrices.createdAt,
+      updatedAt: channelPrices.updatedAt,
+      channelName: channels.name,
+      channelType: channels.type,
+    })
+    .from(channelPrices)
+    .innerJoin(channels, eq(channelPrices.channelId, channels.id))
+    .where(eq(channelPrices.skuId, skuId));
+  return rows as any;
+}
+
+export async function getChannelPricesByChannel(
+  channelId: number,
+  filters?: { search?: string; productGroup?: string; limit?: number; offset?: number }
+) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0 };
+
+  const conditions = [eq(channelPrices.channelId, channelId)];
+  const skuConditions = [];
+  if (filters?.search) {
+    skuConditions.push(or(like(skus.sku, `%${filters.search}%`), like(skus.description, `%${filters.search}%`)));
+  }
+  if (filters?.productGroup) {
+    skuConditions.push(eq(skus.productGroup, filters.productGroup));
+  }
+
+  const baseQuery = db
+    .select({
+      channelPrice: channelPrices,
+      sku: skus,
+      pricing: skuPricing,
+    })
+    .from(channelPrices)
+    .innerJoin(skus, eq(channelPrices.skuId, skus.id))
+    .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id))
+    .where(and(...conditions, ...(skuConditions.length ? skuConditions : [])));
+
+  const limit = filters?.limit ?? 100;
+  const offset = filters?.offset ?? 0;
+  const items = await baseQuery.limit(limit).offset(offset).orderBy(skus.sku);
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(channelPrices)
+    .innerJoin(skus, eq(channelPrices.skuId, skus.id))
+    .where(and(...conditions, ...(skuConditions.length ? skuConditions : [])));
+  return { items, total: Number(countRow?.count ?? 0) };
+}
+
+// Matrix: all SKUs (with pricing) + all channel prices for a given channel type
+export async function getChannelPricingMatrix(
+  channelType: 'online' | 'wholesale',
+  filters?: { search?: string; productGroup?: string; limit?: number; offset?: number }
+) {
+  const db = await getDb();
+  if (!db) return { skus: [], channels: [], prices: [], total: 0 };
+
+  const channelList = await getChannels(channelType);
+
+  const skuConditions = [];
+  if (filters?.search) {
+    skuConditions.push(or(like(skus.sku, `%${filters.search}%`), like(skus.description, `%${filters.search}%`)));
+  }
+  if (filters?.productGroup) {
+    skuConditions.push(eq(skus.productGroup, filters.productGroup));
+  }
+
+  const limit = filters?.limit ?? 100;
+  const offset = filters?.offset ?? 0;
+
+  const skuRows = await db
+    .select({ sku: skus, pricing: skuPricing })
+    .from(skus)
+    .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id))
+    .where(skuConditions.length ? and(...skuConditions) : undefined)
+    .orderBy(skus.sku)
+    .limit(limit)
+    .offset(offset);
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(skus)
+    .where(skuConditions.length ? and(...skuConditions) : undefined);
+
+  const skuIds = skuRows.map(r => r.sku.id);
+  const channelIds = channelList.map(c => c.id);
+
+  let prices: ChannelPrice[] = [];
+  if (skuIds.length > 0 && channelIds.length > 0) {
+    prices = await db
+      .select()
+      .from(channelPrices)
+      .where(and(inArray(channelPrices.skuId, skuIds), inArray(channelPrices.channelId, channelIds)));
+  }
+
+  return {
+    skus: skuRows,
+    channels: channelList,
+    prices,
+    total: Number(countRow?.count ?? 0),
+  };
+}
+
+export async function upsertChannelPrice(data: {
+  skuId: number;
+  channelId: number;
+  price?: string | null;
+  floorPrice?: string | null;
+  ceilingPrice?: string | null;
+  targetMarginPct?: string | null;
+  competitorPrice?: string | null;
+  competitorUrl?: string | null;
+  notes?: string | null;
+  effectiveDate?: Date | null;
+  landedCost?: string | null; // used to compute margin
+}): Promise<ChannelPrice> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  // Compute margin if price and landedCost are available
+  let marginPct: string | null = null;
+  let marginAmt: string | null = null;
+  if (data.price && data.landedCost) {
+    const p = Number(data.price);
+    const l = Number(data.landedCost);
+    if (p > 0) {
+      marginAmt = (p - l).toFixed(2);
+      marginPct = ((p - l) / p).toFixed(4);
+    }
+  }
+
+  const insertValues = {
+    skuId: data.skuId,
+    channelId: data.channelId,
+    price: data.price ?? null,
+    floorPrice: data.floorPrice ?? null,
+    ceilingPrice: data.ceilingPrice ?? null,
+    targetMarginPct: data.targetMarginPct ?? null,
+    marginPct,
+    marginAmt,
+    competitorPrice: data.competitorPrice ?? null,
+    competitorUrl: data.competitorUrl ?? null,
+    notes: data.notes ?? null,
+    effectiveDate: data.effectiveDate ?? null,
+  };
+
+  await db.insert(channelPrices).values(insertValues).onDuplicateKeyUpdate({
+    set: {
+      price: insertValues.price,
+      floorPrice: insertValues.floorPrice,
+      ceilingPrice: insertValues.ceilingPrice,
+      targetMarginPct: insertValues.targetMarginPct,
+      marginPct,
+      marginAmt,
+      competitorPrice: insertValues.competitorPrice,
+      competitorUrl: insertValues.competitorUrl,
+      notes: insertValues.notes,
+      effectiveDate: insertValues.effectiveDate,
+    },
+  });
+
+  const [row] = await db
+    .select()
+    .from(channelPrices)
+    .where(and(eq(channelPrices.skuId, data.skuId), eq(channelPrices.channelId, data.channelId)))
+    .limit(1);
+  return row;
+}
+
+export async function applyChannelPricingRule(channelId: number, targetMarginPct: number) {
+  // For every SKU that has a landed cost, compute price = landedCost / (1 - targetMarginPct)
+  // and upsert the channel price
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  const allSkus = await db
+    .select({ sku: skus, pricing: skuPricing })
+    .from(skus)
+    .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id))
+    .where(eq(skus.status, 'active'));
+
+  let updated = 0;
+  for (const { sku, pricing } of allSkus) {
+    const landed = Number(pricing?.landedCost ?? 0);
+    if (landed <= 0) continue;
+    const price = (landed / (1 - targetMarginPct)).toFixed(2);
+    await upsertChannelPrice({
+      skuId: sku.id,
+      channelId,
+      price,
+      targetMarginPct: String(targetMarginPct),
+      landedCost: String(landed),
+    });
+    updated++;
+  }
+  return { updated };
 }

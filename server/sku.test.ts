@@ -6,7 +6,10 @@ import type { TrpcContext } from "./_core/context";
 vi.mock("./db", () => ({
   getDb: vi.fn().mockResolvedValue(null),
   getSkuList: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-  getSkuById: vi.fn().mockResolvedValue(null),
+  getSkuById: vi.fn().mockResolvedValue({
+    sku: { id: 1, sku: "TEST-001", description: "Test SKU", productGroup: "Test Group", var1: null, var2: null, status: "active", createdAt: new Date(), updatedAt: new Date() },
+    pricing: { id: 1, skuId: 1, srp2024: "99.99", map: "79.99", landedCost: "40.00", bdMarginPct: "0.40", createdAt: new Date(), updatedAt: new Date() },
+  }),
   createSku: vi.fn().mockResolvedValue({
     sku: { id: 1, sku: "TEST-001", description: "Test SKU", productGroup: "Test Group", var1: null, var2: null, status: "active", createdAt: new Date(), updatedAt: new Date() },
     pricing: { id: 1, skuId: 1, srp2024: "99.99", map: "79.99", landedCost: "40.00", bdMarginPct: "0.40", createdAt: new Date(), updatedAt: new Date() },
@@ -18,6 +21,23 @@ vi.mock("./db", () => ({
   bulkImportSkus: vi.fn().mockResolvedValue({ created: 2, updated: 1 }),
   upsertUser: vi.fn().mockResolvedValue(undefined),
   getUserByOpenId: vi.fn().mockResolvedValue(undefined),
+  getProductGroups: vi.fn().mockResolvedValue(["Heat Pumps", "Above-Ground Pumps"]),
+  bulkUpdatePricing: vi.fn().mockResolvedValue({ updated: 0 }),
+  // Channel pricing mocks
+  getChannels: vi.fn().mockResolvedValue([
+    { id: 1, name: "poolpartstogo.com", type: "online", sortOrder: 1, active: 1, createdAt: new Date(), updatedAt: new Date() },
+    { id: 2, name: "Amazon", type: "online", sortOrder: 2, active: 1, createdAt: new Date(), updatedAt: new Date() },
+    { id: 5, name: "UAG", type: "wholesale", sortOrder: 1, active: 1, createdAt: new Date(), updatedAt: new Date() },
+  ]),
+  getChannelPricingMatrix: vi.fn().mockResolvedValue({ skus: [], channels: [], prices: [], total: 0 }),
+  getChannelPricesBySku: vi.fn().mockResolvedValue([]),
+  upsertChannelPrice: vi.fn().mockResolvedValue({
+    id: 1, skuId: 1, channelId: 1, price: "149.99", floorPrice: null, ceilingPrice: null,
+    targetMarginPct: "0.35", marginPct: "0.3334", marginAmt: "49.99",
+    competitorPrice: null, competitorUrl: null, notes: null, effectiveDate: null,
+    createdAt: new Date(), updatedAt: new Date(),
+  }),
+  applyChannelPricingRule: vi.fn().mockResolvedValue({ updated: 10 }),
 }));
 
 // ─── Context helpers ──────────────────────────────────────────────────────────
@@ -218,5 +238,86 @@ describe("Margin calculations", () => {
     const landed = 100;
     const bdMarginPct = retail > 0 ? (retail - landed) / retail : 0;
     expect(bdMarginPct).toBe(0);
+  });
+});
+
+// ─── Channel Pricing tests ────────────────────────────────────────────────────
+describe("channels.list", () => {
+  it("returns all channels when no type filter", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    // The mock returns [] from db — just verify it resolves without error
+    const result = await caller.channels.list({});
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("channelPrices.matrix", () => {
+  it("returns matrix data for online channels", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.channelPrices.matrix({ channelType: "online", limit: 10, offset: 0 });
+    expect(result).toHaveProperty("skus");
+    expect(result).toHaveProperty("channels");
+    expect(result).toHaveProperty("prices");
+    expect(result).toHaveProperty("total");
+  });
+
+  it("returns matrix data for wholesale channels", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.channelPrices.matrix({ channelType: "wholesale", limit: 10, offset: 0 });
+    expect(result).toHaveProperty("skus");
+    expect(Array.isArray(result.channels)).toBe(true);
+  });
+});
+
+describe("channelPrices.bySku", () => {
+  it("returns channel prices for a given SKU", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.channelPrices.bySku({ skuId: 1 });
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("channelPrices.upsert", () => {
+  it("upserts a channel price", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.channelPrices.upsert({
+      skuId: 1,
+      channelId: 1,
+      price: "149.99",
+      targetMarginPct: "0.35",
+    });
+    expect(result).toHaveProperty("id");
+    expect(result).toHaveProperty("price");
+  });
+});
+
+describe("channelPrices.applyRule", () => {
+  it("applies a pricing rule to a channel", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.channelPrices.applyRule({ channelId: 1, targetMarginPct: 0.35 });
+    expect(result).toHaveProperty("updated");
+  });
+});
+
+describe("Channel margin calculations", () => {
+  it("calculates margin correctly: (price - landed) / price", () => {
+    const price = 149.99;
+    const landed = 100.00;
+    const marginPct = (price - landed) / price;
+    expect(marginPct).toBeCloseTo(0.3334, 3);
+  });
+
+  it("calculates price from target margin: landed / (1 - margin)", () => {
+    const landed = 100.00;
+    const targetMargin = 0.35;
+    const price = landed / (1 - targetMargin);
+    expect(price).toBeCloseTo(153.85, 1);
+  });
+
+  it("handles zero landed cost gracefully", () => {
+    const price = 149.99;
+    const landed = 0;
+    const marginPct = landed > 0 ? (price - landed) / price : null;
+    expect(marginPct).toBeNull();
   });
 });

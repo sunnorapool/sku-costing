@@ -22,6 +22,13 @@
       "when": 1774558170344,
       "tag": "0002_loud_blue_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1782419970507,
+      "tag": "0003_wandering_runaways",
+      "breakpoints": true
     }
   ]
 }

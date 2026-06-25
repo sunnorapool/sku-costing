@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import SKUTable from "./pages/SKUTable";
 import VersionHistory from "./pages/VersionHistory";
 import ImportExport from "./pages/ImportExport";
+import ChannelPricing from "./pages/ChannelPricing";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
         <Route path={"/"} component={SKUTable} />
         <Route path={"/history"} component={VersionHistory} />
         <Route path={"/import-export"} component={ImportExport} />
+        <Route path={"/channel-pricing"} component={ChannelPricing} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

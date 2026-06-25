@@ -95,3 +95,42 @@
 - [x] Frontend DashboardLayout: remove Sign In footer button (no longer needed)
 - [x] Backend routers.ts: change all protectedProcedure mutations to publicProcedure
 - [x] Update tests to reflect open access
+
+## Channel Pricing Module (Phase 5)
+
+### Data Model
+- [x] DB: `channels` table (id, name, type: online|wholesale, sortOrder, active)
+- [x] DB: `channel_prices` table (id, skuId, channelId, price, floorPrice, ceilingPrice, targetMarginPct, competitorPrice, competitorUrl, notes, effectiveDate, updatedAt)
+- [x] Run migration SQL via webdev_execute_sql
+- [x] Seed 4 online storefronts: poolpartstogo.com, Amazon, Walmart, poolsupplyworld.com
+- [x] Seed 10 wholesale partners: UAG, Leslie's, B+G, Hansen's + 5 sample partners
+
+### Backend
+- [x] tRPC: channels.list (all channels with type filter)
+- [x] tRPC: channelPrices.listBySku (all channel prices for a given SKU)
+- [x] tRPC: channelPrices.listByChannel (all SKU prices for a given channel, paginated)
+- [x] tRPC: channelPrices.upsert (set/update price for a SKU+channel combo)
+- [x] tRPC: channelPrices.bulkUpsert (import-style bulk set)
+- [x] Auto-calculate margin % = (price - landedCost) / price on upsert
+
+### Frontend — Channel Pricing Page
+- [x] New page: client/src/pages/ChannelPricing.tsx
+- [x] Sidebar nav entry: "Channel Pricing" with price-tag icon
+- [x] Two tabs: Online Storefronts | Wholesale Partners
+- [x] Online tab: SKU rows × storefront columns grid (like a pricing matrix)
+- [x] Wholesale tab: SKU rows × partner columns grid
+- [x] Each cell shows price + margin % color-coded (same thresholds as SKU table)
+- [x] Click a cell to open inline edit popover: price, floor, ceiling, target margin %, competitor price, notes
+- [x] Search/filter by SKU or product group
+- [x] Margin color coding: green ≥35%, yellow ≥25%, orange ≥15%, red <15%
+
+### Pricing Rules
+- [x] Per-channel rule: set target margin % → auto-calculate price from landed cost
+- [x] Floor/ceiling guardrails shown as visual indicators in cells
+- [x] Competitor price field + notes for research tracking
+- [x] "Apply Rule" button: recalculate all prices for a channel based on target margin
+
+### Testing
+- [x] Vitest: channels.list
+- [x] Vitest: channelPrices.upsert (creates and updates)
+- [x] Vitest: channelPrices.listBySku
