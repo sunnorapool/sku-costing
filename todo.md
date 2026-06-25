@@ -134,3 +134,11 @@
 - [x] Vitest: channels.list
 - [x] Vitest: channelPrices.upsert (creates and updates)
 - [x] Vitest: channelPrices.listBySku
+
+## Price Sheet Export + Brand Filter (Phase 6)
+
+- [x] Channel Pricing: Export button — download CSV price sheet for a selected channel (SKU, Description, Brand, Landed Cost, Channel Price, Margin %)
+- [x] Channel Pricing: Export all channels option — one sheet per channel or combined
+- [x] SKU Costing: Brand filter — detect brand from SKU prefix/description, add toggle buttons (BD, Sunnora, Blue Torrent, All)
+- [x] SKU Costing: Brand filter persists across page navigation (localStorage)
+- [x] Backend: tRPC channelPrices.exportSheet — returns all priced SKUs for a channel with full pricing data

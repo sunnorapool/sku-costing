@@ -17,6 +17,7 @@ import {
   getChannelPricesBySku,
   upsertChannelPrice,
   applyChannelPricingRule,
+  exportChannelPriceSheet,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -113,6 +114,7 @@ export const appRouter = router({
           search: z.string().optional(),
           productGroup: z.string().optional(),
           status: z.string().optional(),
+          brand: z.string().optional(),
           limit: z.number().min(1).max(500).optional(),
           offset: z.number().min(0).optional(),
           ids: z.array(z.number()).optional(),
@@ -630,6 +632,21 @@ Instruction: ${input.prompt}`;
       )
       .mutation(async ({ input }) => {
         return applyChannelPricingRule(input.channelId, input.targetMarginPct);
+      }),
+
+    exportSheet: publicProcedure
+      .input(
+        z.object({
+          channelId: z.number(),
+          productGroup: z.string().optional(),
+          brand: z.string().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return exportChannelPriceSheet(input.channelId, {
+          productGroup: input.productGroup,
+          brand: input.brand,
+        });
       }),
   }),
 });

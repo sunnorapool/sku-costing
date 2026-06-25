@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  Download,
   Edit3,
   Loader2,
   RefreshCw,
@@ -356,11 +357,20 @@ interface MatrixProps {
   channelType: "online" | "wholesale";
 }
 
+function escapeCSV(val: string | null | undefined): string {
+  if (val === null || val === undefined) return "";
+  const s = String(val);
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
 function PricingMatrix({ channelType }: MatrixProps) {
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState("all");
   const [page, setPage] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [exportingChannelId, setExportingChannelId] = useState<number | null>(null);
+  const utils = trpc.useUtils();
   const PAGE_SIZE = 50;
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -439,6 +449,61 @@ function PricingMatrix({ channelType }: MatrixProps) {
       </div>
 
       {/* Apply Rule */}
+      {/* Export row */}
+      {channelList.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Export price sheet:</span>
+          {channelList.map(ch => (
+            <Button
+              key={ch.id}
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={exportingChannelId === ch.id}
+              onClick={async () => {
+                setExportingChannelId(ch.id);
+                try {
+                  const rows = await utils.channelPrices.exportSheet.fetch({
+                    channelId: ch.id,
+                    productGroup: productGroup !== "all" ? productGroup : undefined,
+                  });
+                  if (!rows || rows.length === 0) { toast.info(`No priced SKUs for ${ch.name}`); return; }
+                  const headers = ["SKU","Description","Product Group","Var1","Var2","Status","Landed Cost","SRP 2024","MAP","Channel Price","Floor Price","Ceiling Price","Target Margin %","Margin %","Margin $","Competitor Price","Notes","Effective Date"];
+                  const lines = [headers.join(",")];
+                  for (const r of rows) {
+                    lines.push([
+                      r.sku, r.description, r.productGroup, r.var1, r.var2, r.status,
+                      r.landedCost, r.srp2024, r.map, r.channelPrice, r.floorPrice, r.ceilingPrice,
+                      r.targetMarginPct ? (Number(r.targetMarginPct)*100).toFixed(1)+'%' : '',
+                      r.marginPct ? (Number(r.marginPct)*100).toFixed(1)+'%' : '',
+                      r.marginAmt, r.competitorPrice, r.notes,
+                      r.effectiveDate ? new Date(r.effectiveDate).toLocaleDateString() : '',
+                    ].map(escapeCSV).join(","));
+                  }
+                  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `price-sheet-${ch.name.replace(/[^a-z0-9]/gi,"-").toLowerCase()}-${new Date().toISOString().slice(0,10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success(`Exported ${rows.length} SKUs for ${ch.name}`);
+                } catch (e: any) {
+                  toast.error(`Export failed: ${e.message}`);
+                } finally {
+                  setExportingChannelId(null);
+                }
+              }}
+            >
+              {exportingChannelId === ch.id
+                ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                : <Download className="h-3 w-3 mr-1" />}
+              {ch.name}
+            </Button>
+          ))}
+        </div>
+      )}
+
       <ApplyRulePanel channels={channelList} onApplied={refresh} />
 
       {/* Legend */}

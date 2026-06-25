@@ -492,8 +492,22 @@ export default function SKUTable() {
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [brandFilter, setBrandFilter] = useState<string>(() => localStorage.getItem("sku-brand-filter") ?? "");
   const [page, setPage] = useState(0);
   const [aiFilterIds, setAiFilterIds] = useState<number[] | null>(null);
+
+  const BRANDS = [
+    { label: "All", value: "" },
+    { label: "BD", value: "BD" },
+    { label: "Sunnora", value: "Sunnora" },
+    { label: "Blue Torrent", value: "BT" },
+  ];
+
+  const handleBrandFilter = (v: string) => {
+    setBrandFilter(v);
+    localStorage.setItem("sku-brand-filter", v);
+    setPage(0);
+  };
   const PAGE_SIZE = 100;
 
   const [editingSku, setEditingSku] = useState<SkuRow | null>(null);
@@ -506,6 +520,7 @@ export default function SKUTable() {
     search: search || undefined,
     productGroup: productGroup || undefined,
     status: statusFilter || undefined,
+    brand: brandFilter || undefined,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
     ids: aiFilterIds ?? undefined,
@@ -578,6 +593,23 @@ export default function SKUTable() {
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
 
+        {/* Brand filter toggles */}
+        <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white">
+          {BRANDS.map(b => (
+            <button
+              key={b.value}
+              onClick={() => handleBrandFilter(b.value)}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                brandFilter === b.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+
         <Button size="sm" className="h-9 ml-auto" onClick={() => setAddingNew(true)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           Add SKU
@@ -588,8 +620,11 @@ export default function SKUTable() {
       <div className="flex items-center gap-3 mb-2">
         <span className="text-xs text-muted-foreground">
           <strong className="text-foreground">{total.toLocaleString()}</strong> SKUs
-          {(search || productGroup || statusFilter || aiFilterIds) && (
+          {(search || productGroup || statusFilter || brandFilter || aiFilterIds) && (
             <span className="text-primary ml-1">· Filtered</span>
+          )}
+          {brandFilter && (
+            <span className="ml-1 text-primary font-medium">· Brand: {BRANDS.find(b => b.value === brandFilter)?.label}</span>
           )}
           {aiFilterIds && (
             <span className="ml-2 text-blue-600 font-medium">· AI Filter active ({aiFilterIds.length} matched)</span>

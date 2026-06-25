@@ -57,6 +57,7 @@ export async function getSkuList(filters?: {
   search?: string;
   productGroup?: string;
   status?: string;
+  brand?: string;
   limit?: number;
   offset?: number;
   ids?: number[];
@@ -81,6 +82,15 @@ export async function getSkuList(filters?: {
   }
   if (filters?.ids && filters.ids.length > 0) {
     conditions.push(inArray(skus.id, filters.ids));
+  }
+  if (filters?.brand) {
+    // Brand is inferred from SKU prefix (e.g. "BD" → BDXBT53) or description
+    conditions.push(
+      or(
+        like(skus.sku, `${filters.brand}%`),
+        like(skus.description, `%${filters.brand}%`)
+      )
+    );
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -563,4 +573,60 @@ export async function applyChannelPricingRule(channelId: number, targetMarginPct
     updated++;
   }
   return { updated };
+}
+
+export async function exportChannelPriceSheet(
+  channelId: number,
+  filters?: { productGroup?: string; brand?: string }
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const skuConditions = [];
+  if (filters?.productGroup) {
+    skuConditions.push(eq(skus.productGroup, filters.productGroup));
+  }
+  if (filters?.brand) {
+    // Brand is inferred from SKU prefix or description — match case-insensitively
+    skuConditions.push(
+      or(
+        like(skus.sku, `${filters.brand}%`),
+        like(skus.description, `%${filters.brand}%`)
+      )
+    );
+  }
+
+  const rows = await db
+    .select({
+      sku: skus.sku,
+      description: skus.description,
+      productGroup: skus.productGroup,
+      var1: skus.var1,
+      var2: skus.var2,
+      status: skus.status,
+      landedCost: skuPricing.landedCost,
+      srp2024: skuPricing.srp2024,
+      map: skuPricing.map,
+      channelPrice: channelPrices.price,
+      floorPrice: channelPrices.floorPrice,
+      ceilingPrice: channelPrices.ceilingPrice,
+      targetMarginPct: channelPrices.targetMarginPct,
+      marginPct: channelPrices.marginPct,
+      marginAmt: channelPrices.marginAmt,
+      competitorPrice: channelPrices.competitorPrice,
+      notes: channelPrices.notes,
+      effectiveDate: channelPrices.effectiveDate,
+    })
+    .from(channelPrices)
+    .innerJoin(skus, eq(channelPrices.skuId, skus.id))
+    .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id))
+    .where(
+      and(
+        eq(channelPrices.channelId, channelId),
+        ...(skuConditions.length ? skuConditions : [])
+      )
+    )
+    .orderBy(skus.sku);
+
+  return rows;
 }
