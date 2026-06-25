@@ -20,8 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogIn, LogOut, PanelLeft, History, Upload, Waves } from "lucide-react";
-import { getLoginUrl } from "@/const";
+import { LayoutDashboard, PanelLeft, History, Upload, Waves } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -162,52 +161,10 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
 
           {/* Footer / User */}
           <SidebarFooter className="p-3 border-t border-sidebar-border/50">
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors w-full text-left focus:outline-none">
-                    <Avatar className="h-8 w-8 shrink-0 ring-2 ring-primary/30">
-                      <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    {!isCollapsed && (
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-sidebar-foreground truncate leading-none">
-                          {user.name || "User"}
-                        </p>
-                        <p className="text-[10px] text-sidebar-foreground/50 truncate mt-1 leading-none">
-                          {user.email || ""}
-                        </p>
-                      </div>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onClick={logout}
-                    className="cursor-pointer text-destructive focus:text-destructive"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <button
-                onClick={() => { window.location.href = getLoginUrl(); }}
-                className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors w-full text-left focus:outline-none"
-              >
-                <div className="h-8 w-8 shrink-0 rounded-full bg-sidebar-accent flex items-center justify-center">
-                  <LogIn className="h-4 w-4 text-sidebar-foreground/60" />
-                </div>
-                {!isCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-sidebar-foreground/70 truncate leading-none">Sign in</p>
-                    <p className="text-[10px] text-sidebar-foreground/40 truncate mt-1 leading-none">for admin access</p>
-                  </div>
-                )}
-              </button>
+            {!isCollapsed && (
+              <div className="px-2 py-1.5">
+                <p className="text-[10px] text-sidebar-foreground/40 leading-none">poolpartstogo.com</p>
+              </div>
             )}
           </SidebarFooter>
         </Sidebar>

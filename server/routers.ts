@@ -129,15 +129,14 @@ export const appRouter = router({
       return getProductGroups();
     }),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({ sku: skuSchema, pricing: pricingSchema.optional() }))
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
         const result = await createSku(input.sku, input.pricing as any);
         if (result) {
           await recordVersion({
             skuId: result.sku.id,
-            userId: ctx.user.id,
+            userId: null,
             changeType: "create",
             changeDescription: `Created SKU ${input.sku.sku}`,
             previousData: null,
@@ -148,7 +147,7 @@ export const appRouter = router({
         return result;
       }),
 
-    update: protectedProcedure
+    update: publicProcedure
       .input(
         z.object({
           id: z.number(),
@@ -156,8 +155,7 @@ export const appRouter = router({
           pricing: pricingSchema.optional(),
         })
       )
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
         const prev = await getSkuById(input.id);
         if (!prev) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -177,7 +175,7 @@ export const appRouter = router({
         const result = await updateSku(input.id, input.sku as any, pricingWithMargins);
         await recordVersion({
           skuId: input.id,
-          userId: ctx.user.id,
+          userId: null,
           changeType: "update",
           changeDescription: `Updated SKU ${prev.sku.sku}`,
           previousData: prev as any,
@@ -187,15 +185,14 @@ export const appRouter = router({
         return result;
       }),
 
-    delete: protectedProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
         const prev = await getSkuById(input.id);
         if (!prev) throw new TRPCError({ code: "NOT_FOUND" });
         await recordVersion({
           skuId: input.id,
-          userId: ctx.user.id,
+          userId: null,
           changeType: "delete",
           changeDescription: `Deleted SKU ${prev.sku.sku}`,
           previousData: prev as any,
@@ -209,15 +206,14 @@ export const appRouter = router({
 
   // ─── AI Prompt ──────────────────────────────────────────────────────────────
   ai: router({
-    prompt: protectedProcedure
+    prompt: publicProcedure
       .input(
         z.object({
           prompt: z.string().min(1).max(2000),
           preview: z.boolean().optional().default(true),
         })
       )
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
 
         // Fetch all SKUs for context
         const { items } = await getSkuList({ limit: 500 });
@@ -372,7 +368,7 @@ Instruction: ${input.prompt}`;
         if (affectedSkuIds.length > 0) {
           await recordVersion({
             skuId: affectedSkuIds[0],
-            userId: ctx.user.id,
+            userId: null,
             changeType: "ai_prompt",
             changeDescription: parsed.summary,
             promptText: input.prompt,
@@ -384,10 +380,9 @@ Instruction: ${input.prompt}`;
 
                 return { ...parsed, applied: true };
       }),
-    filter: protectedProcedure
+    filter: publicProcedure
       .input(z.object({ prompt: z.string().min(1).max(2000) }))
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
         const { items } = await getSkuList({ limit: 500 });
         const skuSummary = items.map(item => ({
           id: item.sku.id,
@@ -446,10 +441,9 @@ Instruction: ${input.prompt}`;
         return getVersionHistory(input);
       }),
 
-    revert: protectedProcedure
+    revert: publicProcedure
       .input(z.object({ versionId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
         const db = await (await import("./db")).getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -470,7 +464,7 @@ Instruction: ${input.prompt}`;
 
         await recordVersion({
           skuId: version.skuId,
-          userId: ctx.user.id,
+          userId: null,
           changeType: "revert",
           changeDescription: `Reverted to version from ${version.createdAt}`,
           previousData: null,
@@ -484,7 +478,7 @@ Instruction: ${input.prompt}`;
 
   // ─── Import / Export ────────────────────────────────────────────────────────
   import: router({
-    csv: protectedProcedure
+    csv: publicProcedure
       .input(
         z.object({
           rows: z.array(
@@ -515,8 +509,7 @@ Instruction: ${input.prompt}`;
           ),
         })
       )
-      .mutation(async ({ ctx, input }) => {
-        adminOnly(ctx.user.role);
+      .mutation(async ({ input }) => {
         const rows = input.rows.map(row => ({
           sku: {
             sku: row.sku,
@@ -546,7 +539,7 @@ Instruction: ${input.prompt}`;
           },
         }));
 
-        const result = await bulkImportSkus(rows, ctx.user.id);
+        const result = await bulkImportSkus(rows);
         return result;
       }),
   }),

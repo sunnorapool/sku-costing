@@ -87,3 +87,11 @@
 - [x] Sidebar footer: show "Sign in for admin access" button for unauthenticated visitors
 - [x] Sidebar footer: show user avatar + sign-out dropdown for authenticated users
 - [x] SKUTable admin controls (Add/Edit/Delete/AI prompt) remain gated to admin role only
+
+## Full Open Access — Everyone is Admin (Phase 4)
+- [x] Frontend SKUTable: remove isAdmin checks — show Add/Edit/Delete/AI prompt to all visitors
+- [x] Frontend VersionHistory: remove isAdmin check — show Revert button to all visitors
+- [x] Frontend ImportExport: remove isAdmin/user checks — allow import to all visitors
+- [x] Frontend DashboardLayout: remove Sign In footer button (no longer needed)
+- [x] Backend routers.ts: change all protectedProcedure mutations to publicProcedure
+- [x] Update tests to reflect open access

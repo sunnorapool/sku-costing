@@ -111,22 +111,20 @@ describe("skus.create", () => {
     expect(result).toHaveProperty("pricing");
   });
 
-  it("throws FORBIDDEN when called by non-admin user", async () => {
+  it("creates a SKU when called by a regular user (open access)", async () => {
     const caller = appRouter.createCaller(makeCtx("user"));
-    await expect(
-      caller.skus.create({
-        sku: { sku: "BDXBT53", description: "53K BTU Heat Pump", productGroup: "Heat Pumps" },
-      })
-    ).rejects.toThrow();
+    const result = await caller.skus.create({
+      sku: { sku: "BDXBT53-USER", description: "53K BTU Heat Pump (user)", productGroup: "Heat Pumps" },
+    });
+    expect(result).toHaveProperty("sku");
   });
 
-  it("throws when called without authentication", async () => {
+  it("creates a SKU when called without authentication (open access)", async () => {
     const caller = appRouter.createCaller(makePublicCtx());
-    await expect(
-      caller.skus.create({
-        sku: { sku: "BDXBT53", description: "53K BTU Heat Pump", productGroup: "Heat Pumps" },
-      })
-    ).rejects.toThrow();
+    const result = await caller.skus.create({
+      sku: { sku: "BDXBT53-ANON", description: "53K BTU Heat Pump (anon)", productGroup: "Heat Pumps" },
+    });
+    expect(result).toHaveProperty("sku");
   });
 });
 
@@ -173,13 +171,13 @@ describe("import.csv", () => {
     expect(result).toHaveProperty("updated");
   });
 
-  it("throws FORBIDDEN when called by non-admin", async () => {
-    const caller = appRouter.createCaller(makeCtx("user"));
-    await expect(
-      caller.import.csv({
-        rows: [{ sku: "TEST-001" }],
-      })
-    ).rejects.toThrow();
+  it("imports rows when called without authentication (open access)", async () => {
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.import.csv({
+      rows: [{ sku: "TEST-003", description: "Anon import test", productGroup: "Test Group" }],
+    });
+    expect(result).toHaveProperty("created");
+    expect(result).toHaveProperty("updated");
   });
 });
 

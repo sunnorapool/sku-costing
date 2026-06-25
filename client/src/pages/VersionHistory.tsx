@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
 
 type VersionEntry = {
   id: number;
@@ -204,9 +203,6 @@ function VersionCard({ entry, isAdmin, onRevert }: {
 }
 
 export default function VersionHistory() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-
   const [search, setSearch] = useState("");
   const [changeTypeFilter, setChangeTypeFilter] = useState("");
   const [revertConfirm, setRevertConfirm] = useState<number | null>(null);
@@ -312,7 +308,7 @@ export default function VersionHistory() {
             <VersionCard
               key={entry.id}
               entry={entry}
-              isAdmin={isAdmin}
+              isAdmin={true}
               onRevert={id => setRevertConfirm(id)}
             />
           ))}

@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,9 +168,6 @@ function AIPromptPanel({
   onFilter: (ids: number[]) => void;
   onClearFilter: () => void;
 }) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-
   const [mode, setMode] = useState<AIMode>("edit");
   const [prompt, setPrompt] = useState("");
   const [streamedText, setStreamedText] = useState("");
@@ -279,40 +275,33 @@ function AIPromptPanel({
         </div>
 
         {/* Mode toggle */}
-        {isAdmin && (
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1 shrink-0">
-            <button
-              onClick={() => { setMode("edit"); setStreamedText(""); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                mode === "edit"
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Zap className="h-3 w-3" />
-              Edit Mode
-            </button>
-            <button
-              onClick={() => { setMode("filter"); setStreamedText(""); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                mode === "filter"
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Eye className="h-3 w-3" />
-              Filter Mode
-            </button>
-          </div>
-        )}
-
-        {!isAdmin && (
-          <Badge variant="outline" className="text-xs shrink-0">Read-only</Badge>
-        )}
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1 shrink-0">
+          <button
+            onClick={() => { setMode("edit"); setStreamedText(""); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === "edit"
+                ? "bg-white text-primary shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Zap className="h-3 w-3" />
+            Edit Mode
+          </button>
+          <button
+            onClick={() => { setMode("filter"); setStreamedText(""); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === "filter"
+                ? "bg-white text-primary shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Eye className="h-3 w-3" />
+            Filter Mode
+          </button>
+        </div>
       </div>
 
-      {isAdmin ? (
-        <div className="space-y-2">
+      <div className="space-y-2">
           {/* Input row */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
@@ -363,11 +352,6 @@ function AIPromptPanel({
             </div>
           )}
         </div>
-      ) : (
-        <div className="text-sm text-muted-foreground bg-white/60 rounded-lg px-3 py-2.5 border border-primary/10">
-          AI prompt editing is available to admin users only.
-        </div>
-      )}
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -505,9 +489,6 @@ function ColGroupHeader({ isAdmin }: { isAdmin: boolean }) {
 
 // ─── Main SKU Table Page ──────────────────────────────────────────────────────
 export default function SKUTable() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -597,12 +578,10 @@ export default function SKUTable() {
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
 
-        {isAdmin && (
-          <Button size="sm" className="h-9 ml-auto" onClick={() => setAddingNew(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Add SKU
-          </Button>
-        )}
+        <Button size="sm" className="h-9 ml-auto" onClick={() => setAddingNew(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          Add SKU
+        </Button>
       </div>
 
       {/* Stats bar */}
@@ -616,11 +595,7 @@ export default function SKUTable() {
             <span className="ml-2 text-blue-600 font-medium">· AI Filter active ({aiFilterIds.length} matched)</span>
           )}
         </span>
-        {isAdmin && (
-          <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20 ml-auto">
-            Admin Mode
-          </Badge>
-        )}
+
       </div>
 
       {/* Table */}
@@ -642,7 +617,7 @@ export default function SKUTable() {
         ) : (
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 z-20">
-              <ColGroupHeader isAdmin={isAdmin} />
+              <ColGroupHeader isAdmin={true} />
               <tr className="bg-slate-50 border-b">
                 {/* SKU Info */}
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-r min-w-[90px] bg-slate-50">SKU</th>
@@ -687,9 +662,7 @@ export default function SKUTable() {
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60">BD Fee</th>
                 {/* Notes */}
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-l min-w-[180px] bg-slate-50">Notes</th>
-                {isAdmin && (
-                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground border-l min-w-[80px] bg-slate-50">Actions</th>
-                )}
+                <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground border-l min-w-[80px] bg-slate-50">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -759,26 +732,24 @@ export default function SKUTable() {
                       {(row.pricing as any)?.notes ?? "—"}
                     </span>
                   </td>
-                  {isAdmin && (
-                    <td className="px-3 py-2 border-l">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost" size="icon"
-                          className="h-7 w-7 hover:bg-primary/10 hover:text-primary"
-                          onClick={() => setEditingSku(row)}
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost" size="icon"
-                          className="h-7 w-7 hover:bg-red-50 hover:text-red-500"
-                          onClick={() => setDeleteConfirm(row)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-3 py-2 border-l">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 hover:bg-primary/10 hover:text-primary"
+                        onClick={() => setEditingSku(row)}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 hover:bg-red-50 hover:text-red-500"
+                        onClick={() => setDeleteConfirm(row)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -130,9 +129,6 @@ function parseCSVLine(line: string): string[] {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ImportExport() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importPreview, setImportPreview] = useState<Record<string, string>[] | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -324,8 +320,7 @@ export default function ImportExport() {
       </Card>
 
       {/* Import */}
-      {isAdmin && (
-        <Card>
+      <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Upload className="h-4 w-4 text-primary" />
@@ -448,8 +443,7 @@ export default function ImportExport() {
               </div>
             )}
           </CardContent>
-        </Card>
-      )}
+      </Card>
 
       {/* Column Reference */}
       <Card>
