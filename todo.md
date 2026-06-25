@@ -81,3 +81,9 @@
 - [x] AI prompt: live before/after diff preview (red/green highlights per row)
 - [x] AI prompt: natural language filter mode (show matching rows instantly)
 - [x] AI prompt: improved UX with mode toggle (Edit Mode vs Filter Mode)
+
+## Open Access (Phase 3)
+- [x] Remove login wall — unauthenticated visitors can browse all SKU data
+- [x] Sidebar footer: show "Sign in for admin access" button for unauthenticated visitors
+- [x] Sidebar footer: show user avatar + sign-out dropdown for authenticated users
+- [x] SKUTable admin controls (Add/Edit/Delete/AI prompt) remain gated to admin role only
