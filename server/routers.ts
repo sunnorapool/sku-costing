@@ -21,6 +21,8 @@ import {
   getCartonDetailsBySkuId,
   getSourceStatuses,
   getSuppliers,
+  bulkImportChannelPrices,
+  getMarginAlerts,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -686,6 +688,33 @@ Instruction: ${input.prompt}`;
           productGroup: input.productGroup,
           brand: input.brand,
         });
+      }),
+
+    bulkImportCsv: publicProcedure
+      .input(
+        z.object({
+          rows: z.array(z.object({
+            skuCode: z.string(),
+            channelName: z.string(),
+            price: z.string(),
+            floorPrice: z.string().optional(),
+            ceilingPrice: z.string().optional(),
+            targetMarginPct: z.string().optional(),
+            notes: z.string().optional(),
+          }))
+        })
+      )
+      .mutation(async ({ input }) => {
+        return bulkImportChannelPrices(input.rows);
+      }),
+
+    marginAlerts: publicProcedure
+      .input(z.object({
+        channelId: z.number().optional(),
+        thresholdPct: z.number().min(0).max(1).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return getMarginAlerts(input?.channelId, input?.thresholdPct);
       }),
   }),
 });

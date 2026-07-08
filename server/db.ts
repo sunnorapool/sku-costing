@@ -671,3 +671,111 @@ export async function getSuppliers() {
     .where(sql`${skus.supplier} IS NOT NULL AND ${skus.supplier} != ''`);
   return rows.map(r => r.supplier).filter(Boolean).sort() as string[];
 }
+
+// ─── Bulk Channel Price Import ────────────────────────────────────────────────
+
+export async function bulkImportChannelPrices(rows: {
+  skuCode: string;
+  channelName: string;
+  price: string;
+  floorPrice?: string;
+  ceilingPrice?: string;
+  targetMarginPct?: string;
+  notes?: string;
+}[]) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  // Build lookup maps
+  const allSkus = await db.select({ id: skus.id, sku: skus.sku }).from(skus);
+  const allChannels = await db.select({ id: channels.id, name: channels.name }).from(channels);
+  const skuMap = new Map(allSkus.map(s => [s.sku.toUpperCase(), s.id]));
+  const channelMap = new Map(allChannels.map(c => [c.name.toUpperCase(), c.id]));
+
+  let created = 0;
+  let updated = 0;
+  const errors: string[] = [];
+
+  for (const row of rows) {
+    const skuId = skuMap.get(row.skuCode.toUpperCase());
+    const channelId = channelMap.get(row.channelName.toUpperCase());
+    if (!skuId) { errors.push(`SKU not found: ${row.skuCode}`); continue; }
+    if (!channelId) { errors.push(`Channel not found: ${row.channelName}`); continue; }
+
+    // Get landed cost for margin calculation
+    const skuData = await getSkuById(skuId);
+    const landedCost = skuData?.pricing?.landedCost ?? null;
+
+    const existing = await db
+      .select()
+      .from(channelPrices)
+      .where(and(eq(channelPrices.skuId, skuId), eq(channelPrices.channelId, channelId)))
+      .limit(1);
+
+    await upsertChannelPrice({
+      skuId,
+      channelId,
+      price: row.price || null,
+      floorPrice: row.floorPrice || null,
+      ceilingPrice: row.ceilingPrice || null,
+      targetMarginPct: row.targetMarginPct || null,
+      notes: row.notes || null,
+      landedCost,
+    });
+
+    if (existing.length > 0) updated++; else created++;
+  }
+
+  return { created, updated, errors, total: rows.length };
+}
+
+// ─── Margin Alerts ────────────────────────────────────────────────────────────
+
+export async function getMarginAlerts(channelId?: number, thresholdPct?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const threshold = thresholdPct ?? 0.20; // default 20% threshold
+
+  const conditions = [
+    sql`${channelPrices.price} IS NOT NULL`,
+  ];
+  if (channelId) {
+    conditions.push(eq(channelPrices.channelId, channelId));
+  }
+
+  const rows = await db
+    .select({
+      skuId: skus.id,
+      skuCode: skus.sku,
+      description: skus.description,
+      productGroup: skus.productGroup,
+      supplier: skus.supplier,
+      channelId: channelPrices.channelId,
+      channelName: channels.name,
+      channelType: channels.type,
+      price: channelPrices.price,
+      floorPrice: channelPrices.floorPrice,
+      targetMarginPct: channelPrices.targetMarginPct,
+      marginPct: channelPrices.marginPct,
+      marginAmt: channelPrices.marginAmt,
+      landedCost: skuPricing.landedCost,
+      srp2024: skuPricing.srp2024,
+    })
+    .from(channelPrices)
+    .innerJoin(skus, eq(channelPrices.skuId, skus.id))
+    .innerJoin(channels, eq(channelPrices.channelId, channels.id))
+    .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id))
+    .where(and(...conditions))
+    .orderBy(channelPrices.marginPct);
+
+  // Filter: below floor price OR below threshold margin
+  return rows.filter(r => {
+    const price = Number(r.price ?? 0);
+    const floor = Number(r.floorPrice ?? 0);
+    const margin = Number(r.marginPct ?? 1);
+    const belowFloor = floor > 0 && price < floor;
+    const belowThreshold = margin < threshold;
+    return belowFloor || belowThreshold;
+  });
+}

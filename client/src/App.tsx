@@ -8,6 +8,8 @@ import SKUTable from "./pages/SKUTable";
 import VersionHistory from "./pages/VersionHistory";
 import ImportExport from "./pages/ImportExport";
 import ChannelPricing from "./pages/ChannelPricing";
+import SKUDetail from "./pages/SKUDetail";
+import MarginAlerts from "./pages/MarginAlerts";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -18,6 +20,10 @@ function Router() {
         <Route path={"/history"} component={VersionHistory} />
         <Route path={"/import-export"} component={ImportExport} />
         <Route path={"/channel-pricing"} component={ChannelPricing} />
+        <Route path={"/alerts"} component={MarginAlerts} />
+        <Route path={"/sku/:id"}>
+          {(params) => <SKUDetail skuId={Number(params.id)} />}
+        </Route>
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

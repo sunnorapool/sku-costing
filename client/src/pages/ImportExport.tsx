@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import {
@@ -9,6 +10,7 @@ import {
   Loader2,
   Upload,
   X,
+  DollarSign,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -155,6 +157,142 @@ function parseCSVLine(line: string): string[] {
   }
   result.push(current);
   return result;
+}
+
+// ─── Channel Price Import Card ──────────────────────────────────────────────
+function ChannelPriceImportCard() {
+  const cpFileRef = useRef<HTMLInputElement>(null);
+  const [cpPreview, setCpPreview] = useState<{ skuCode: string; channelName: string; price: string; floorPrice?: string; ceilingPrice?: string; targetMarginPct?: string; notes?: string }[] | null>(null);
+  const [cpError, setCpError] = useState<string | null>(null);
+  const [cpDragging, setCpDragging] = useState(false);
+
+  const bulkImport = trpc.channelPrices.bulkImportCsv.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Channel prices imported: ${result.created} created, ${result.updated} updated${result.errors.length ? `, ${result.errors.length} errors` : ''}`);
+      setCpPreview(null);
+    },
+    onError: (err) => toast.error(`Import failed: ${err.message}`),
+  });
+
+  const handleCpTemplate = () => {
+    const csv = ['SKU,Channel,Price,Floor Price,Ceiling Price,Target Margin %,Notes', 'BDXBT53,Amazon,2499.00,2200.00,2699.00,0.35,'].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'channel-price-template.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCpFile = (file: File) => {
+    if (!file.name.endsWith('.csv')) { setCpError('Please upload a .csv file'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { setCpError('CSV must have at least a header row and one data row'); return; }
+        const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+          const vals = parseCSVLine(lines[i]);
+          const get = (name: string) => vals[headers.indexOf(name)]?.trim() || undefined;
+          const skuCode = get('sku') || get('sku code') || get('skucode');
+          const channelName = get('channel') || get('channel name') || get('channelname');
+          const price = get('price');
+          if (!skuCode || !channelName || !price) continue;
+          rows.push({ skuCode, channelName, price, floorPrice: get('floor price') || get('floorprice'), ceilingPrice: get('ceiling price') || get('ceilingprice'), targetMarginPct: get('target margin %') || get('targetmarginpct'), notes: get('notes') });
+        }
+        if (rows.length === 0) { setCpError('No valid rows found. Check that SKU, Channel, and Price columns are present.'); return; }
+        setCpError(null);
+        setCpPreview(rows);
+      } catch { setCpError('Failed to parse CSV file'); }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-teal-600" />
+          Import Channel Prices
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Upload a CSV to set channel prices in bulk. Columns: <span className="font-mono text-xs bg-muted px-1 rounded">SKU, Channel, Price</span> (required) plus optional <span className="font-mono text-xs bg-muted px-1 rounded">Floor Price, Ceiling Price, Target Margin %, Notes</span>.
+        </p>
+        {!cpPreview ? (
+          <>
+            <div
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                cpDragging ? 'border-teal-500 bg-teal-50/10' : 'border-border hover:border-teal-500/50 hover:bg-muted/30'
+              }`}
+              onDragOver={e => { e.preventDefault(); setCpDragging(true); }}
+              onDragLeave={() => setCpDragging(false)}
+              onDrop={e => { e.preventDefault(); setCpDragging(false); const f = e.dataTransfer.files[0]; if (f) handleCpFile(f); }}
+              onClick={() => cpFileRef.current?.click()}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-sm font-medium">Drop your channel price CSV here</p>
+              <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
+              <input ref={cpFileRef} type="file" accept=".csv" className="hidden" onChange={e => e.target.files?.[0] && handleCpFile(e.target.files[0])} />
+            </div>
+            {cpError && (
+              <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />{cpError}
+              </div>
+            )}
+            <Button variant="outline" size="sm" onClick={handleCpTemplate}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />Download Channel Price Template
+            </Button>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                {cpPreview.length} price rows ready to import
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setCpPreview(null)}><X className="h-4 w-4 mr-1" />Cancel</Button>
+            </div>
+            <div className="border rounded-lg overflow-auto max-h-56">
+              <table className="w-full text-xs">
+                <thead><tr className="bg-muted/50 border-b">
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">#</th>
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">SKU</th>
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Channel</th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Price</th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Floor</th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Ceiling</th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Target Margin</th>
+                </tr></thead>
+                <tbody>
+                  {cpPreview.slice(0, 20).map((row, i) => (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                      <td className="px-3 py-2 font-mono font-medium">{row.skuCode}</td>
+                      <td className="px-3 py-2">{row.channelName}</td>
+                      <td className="px-3 py-2 text-right">${row.price}</td>
+                      <td className="px-3 py-2 text-right">{row.floorPrice ? `$${row.floorPrice}` : '—'}</td>
+                      <td className="px-3 py-2 text-right">{row.ceilingPrice ? `$${row.ceilingPrice}` : '—'}</td>
+                      <td className="px-3 py-2 text-right">{row.targetMarginPct ? `${(Number(row.targetMarginPct) * 100).toFixed(0)}%` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {cpPreview.length > 20 && <div className="px-3 py-2 text-xs text-muted-foreground border-t bg-muted/20">... and {cpPreview.length - 20} more rows</div>}
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => bulkImport.mutate({ rows: cpPreview })} disabled={bulkImport.isPending} className="flex-1">
+                {bulkImport.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</> : <><Upload className="h-4 w-4 mr-2" />Confirm Import ({cpPreview.length} rows)</>}
+              </Button>
+              <Button variant="outline" onClick={() => setCpPreview(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -474,6 +612,9 @@ export default function ImportExport() {
             )}
           </CardContent>
       </Card>
+
+      {/* Channel Price Import */}
+      <ChannelPriceImportCard />
 
       {/* Column Reference */}
       <Card>

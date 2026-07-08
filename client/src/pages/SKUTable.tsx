@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import {
   AlertTriangle,
   Bot,
@@ -508,6 +509,7 @@ function ColGroupHeader({ isAdmin }: { isAdmin: boolean }) {
 
 // ─── Main SKU Table Page ──────────────────────────────────────────────────────
 export default function SKUTable() {
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -772,7 +774,12 @@ export default function SKUTable() {
                 >
                   {/* SKU Info */}
                   <td className="px-3 py-2 border-r">
-                    <span className="font-mono text-xs font-semibold text-primary">{row.sku.sku}</span>
+                    <button
+                      className="font-mono text-xs font-semibold text-primary hover:underline cursor-pointer"
+                      onClick={() => setLocation(`/sku/${row.sku.id}`)}
+                    >
+                      {row.sku.sku}
+                    </button>
                   </td>
                   <td className="px-3 py-2 border-r text-xs max-w-[260px]">
                     <span className="block truncate" title={row.sku.description ?? ""}>{row.sku.description ?? "—"}</span>

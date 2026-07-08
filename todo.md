@@ -165,3 +165,16 @@
 - [x] Carton Details modal: clicking the package icon on a SKU row opens a dialog showing the carton_details sub-table (carton #, label, component SKU, qty, sellable, dims, weights, packing type)
 - [x] Channel Pricing: add Supplier filter dropdown to filter the pricing matrix by supplier
 - [x] CSV Export: update SKU export to include all new sourcing fields (supplier, HTS code, source status, B&D, packing type, carton L/W/H, gross/net weight, pcs per carton, sales qty/price/amount YTD)
+
+## Phase 9 — Bulk Price Import, SKU Detail Page, Margin Alert Dashboard
+
+- [x] Bulk channel price CSV import: upload CSV (SKU, Channel, Price) to set channel prices in bulk; preview before committing; show created/updated counts
+- [x] Backend: tRPC channelPrices.bulkImportCsv procedure — parse CSV rows, match SKU+channel, upsert prices
+- [x] Import / Export page: add "Import Channel Prices" card with CSV template download and upload flow
+- [x] SKU detail page (/sku/:id): full read-only view of all costing, pricing, sourcing, carton details, and channel prices in one page
+- [x] SKU detail page: accessible by clicking the SKU code link in the table
+- [x] Margin alert dashboard: new "Alerts" section in sidebar showing SKUs where channel price < floor price OR margin % < target margin threshold
+- [x] Margin alert dashboard: filter by channel, threshold slider, sort by severity
+- [x] Margin alert dashboard: summary stats (total alerts, by channel, by product group)
+- [x] Wire all new routes in App.tsx
+- [x] Run tests and save checkpoint
