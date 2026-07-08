@@ -29,6 +29,21 @@ type SkuRow = {
     var2: string | null;
     status: "active" | "done" | "new_model" | "missing" | "discontinued";
     sortOrder: number | null;
+    supplier: string | null;
+    htsCode: string | null;
+    sourceStatus: string | null;
+    isBd: string | null;
+    salesQty2024Ytd: string | null;
+    avgPrice2024Ytd: string | null;
+    salesAmt2024Ytd: string | null;
+    cartonL: string | null;
+    cartonW: string | null;
+    cartonH: string | null;
+    grossWtKg: string | null;
+    netWtKg: string | null;
+    pcsPerCarton: string | null;
+    packingType: string | null;
+    cartonCount: number | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -89,6 +104,21 @@ export default function EditSKUDialog({ open, sku, onClose, onSaved }: Props) {
     bdFee: p.bdFee ?? "",
     // Notes
     notes: p.notes ?? "",
+    // Sourcing
+    supplier: s.supplier ?? "",
+    htsCode: s.htsCode ?? "",
+    sourceStatus: s.sourceStatus ?? "",
+    isBd: s.isBd ?? "",
+    salesQty2024Ytd: s.salesQty2024Ytd ?? "",
+    avgPrice2024Ytd: s.avgPrice2024Ytd ?? "",
+    salesAmt2024Ytd: s.salesAmt2024Ytd ?? "",
+    cartonL: s.cartonL ?? "",
+    cartonW: s.cartonW ?? "",
+    cartonH: s.cartonH ?? "",
+    grossWtKg: s.grossWtKg ?? "",
+    netWtKg: s.netWtKg ?? "",
+    pcsPerCarton: s.pcsPerCarton ?? "",
+    packingType: s.packingType ?? "",
   });
 
   const updateMutation = trpc.skus.update.useMutation({
@@ -109,6 +139,21 @@ export default function EditSKUDialog({ open, sku, onClose, onSaved }: Props) {
         var1: nullIfEmpty(form.var1),
         var2: nullIfEmpty(form.var2),
         status: form.status,
+        // Sourcing
+        supplier: nullIfEmpty(form.supplier),
+        htsCode: nullIfEmpty(form.htsCode),
+        sourceStatus: nullIfEmpty(form.sourceStatus),
+        isBd: nullIfEmpty(form.isBd),
+        salesQty2024Ytd: nullIfEmpty(form.salesQty2024Ytd),
+        avgPrice2024Ytd: nullIfEmpty(form.avgPrice2024Ytd),
+        salesAmt2024Ytd: nullIfEmpty(form.salesAmt2024Ytd),
+        cartonL: nullIfEmpty(form.cartonL),
+        cartonW: nullIfEmpty(form.cartonW),
+        cartonH: nullIfEmpty(form.cartonH),
+        grossWtKg: nullIfEmpty(form.grossWtKg),
+        netWtKg: nullIfEmpty(form.netWtKg),
+        pcsPerCarton: nullIfEmpty(form.pcsPerCarton),
+        packingType: nullIfEmpty(form.packingType),
       },
       pricing: {
         srp2023: nullIfEmpty(form.srp2023),
@@ -294,6 +339,83 @@ export default function EditSKUDialog({ open, sku, onClose, onSaved }: Props) {
           <div>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Notes</h3>
             <Textarea {...f("notes")} placeholder="Internal notes about this SKU..." rows={3} className="text-sm resize-none" />
+          </div>
+
+          {/* Sourcing Info */}
+          <div>
+            <h3 className="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
+              Sourcing Info
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Supplier</Label>
+                <Input {...f("supplier")} placeholder="e.g. SPLASH" className="text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">HTS Code</Label>
+                <Input {...f("htsCode")} placeholder="e.g. 8418.61.0100" className="text-sm font-mono" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Source Status</Label>
+                <Input {...f("sourceStatus")} placeholder="e.g. Ready for costing" className="text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">B&amp;D?</Label>
+                <Select value={form.isBd || "_none"} onValueChange={v => setForm(p => ({ ...p, isBd: v === "_none" ? "" : v }))}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— None —</SelectItem>
+                    <SelectItem value="Yes">Yes</SelectItem>
+                    <SelectItem value="No">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Packing Type</Label>
+                <Input {...f("packingType")} placeholder="e.g. BB, CC, WOOD CRATE" className="text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Pcs / Carton</Label>
+                <Input {...f("pcsPerCarton")} placeholder="1" className="text-sm" type="number" step="1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Carton L (cm)</Label>
+                <Input {...f("cartonL")} placeholder="0" className="text-sm" type="number" step="0.1" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Carton W (cm)</Label>
+                <Input {...f("cartonW")} placeholder="0" className="text-sm" type="number" step="0.1" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Carton H (cm)</Label>
+                <Input {...f("cartonH")} placeholder="0" className="text-sm" type="number" step="0.1" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Gross Wt (kg)</Label>
+                <Input {...f("grossWtKg")} placeholder="0" className="text-sm" type="number" step="0.001" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Net Wt (kg)</Label>
+                <Input {...f("netWtKg")} placeholder="0" className="text-sm" type="number" step="0.001" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Sales Qty YTD</Label>
+                <Input {...f("salesQty2024Ytd")} placeholder="0" className="text-sm" type="number" step="1" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Avg Price YTD</Label>
+                <Input {...f("avgPrice2024Ytd")} placeholder="0.00" className="text-sm" type="number" step="0.01" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Sales Amt YTD</Label>
+                <Input {...f("salesAmt2024Ytd")} placeholder="0.00" className="text-sm" type="number" step="0.01" />
+              </div>
+            </div>
           </div>
         </div>
 

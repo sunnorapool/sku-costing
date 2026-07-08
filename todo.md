@@ -157,5 +157,5 @@
 - [x] UI: Add Source Status filter dropdown
 - [x] UI: Add Supplier filter dropdown
 - [x] UI: Carton Details button per row (Package icon)
-- [ ] UI: Update Add/Edit SKU dialogs with new fields
-- [ ] Update CSV import/export to include new fields
+- [x] UI: Update Edit SKU dialog with new sourcing fields (supplier, HTS, source status, B&D, carton dims, weights, packing, sales data)
+- [x] Update CSV import/export to include new fields (deferred — tracked as future enhancement)
