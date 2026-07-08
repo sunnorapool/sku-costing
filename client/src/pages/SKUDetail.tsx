@@ -10,6 +10,9 @@ import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
   Box,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   DollarSign,
   Edit2,
   Loader2,
@@ -69,6 +72,8 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
   const [, setLocation] = useLocation();
   const [editing, setEditing] = useState(false);
   const [editingChannelId, setEditingChannelId] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyChannelId, setHistoryChannelId] = useState<number | undefined>(undefined);
   const [cpForm, setCpForm] = useState<ChannelPriceForm>({ price: "", floorPrice: "", ceilingPrice: "", targetMarginPct: "", competitorPrice: "", notes: "" });
   const utils = trpc.useUtils();
 
@@ -76,6 +81,10 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
   const { data: cartonDetails, isLoading: cartonLoading } = trpc.skus.cartonDetails.useQuery({ skuId });
   const { data: channelPrices, isLoading: channelLoading } = trpc.channelPrices.bySku.useQuery({ skuId });
   const { data: channels } = trpc.channels.list.useQuery();
+  const { data: priceHistory, isLoading: historyLoading } = trpc.channelPrices.priceHistory.useQuery(
+    { skuId, channelId: historyChannelId, limit: 100 },
+    { enabled: showHistory }
+  );
 
   const upsertChannelPrice = trpc.channelPrices.upsert.useMutation({
     onSuccess: () => {
@@ -541,6 +550,99 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
             </div>
           )}
         </CardContent>
+      </Card>
+
+      {/* Price History */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wide">
+              <Clock className="h-3.5 w-3.5" />Price Change History
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {showHistory && (
+                <select
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  value={historyChannelId ?? ""}
+                  onChange={e => setHistoryChannelId(e.target.value ? Number(e.target.value) : undefined)}
+                >
+                  <option value="">All Channels</option>
+                  {(channels ?? []).map(ch => (
+                    <option key={ch.id} value={ch.id}>{ch.name}</option>
+                  ))}
+                </select>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-xs gap-1"
+                onClick={() => setShowHistory(v => !v)}
+              >
+                {showHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {showHistory ? "Hide" : "Show history"}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {showHistory && (
+          <CardContent className="pt-0">
+            {historyLoading ? (
+              <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />Loading history…
+              </div>
+            ) : !priceHistory || priceHistory.rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No price changes recorded yet. Changes will appear here after the first edit.</p>
+            ) : (
+              <div className="overflow-auto rounded-lg border">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/50 border-b">
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">When</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Channel</th>
+                      <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Old Price</th>
+                      <th className="text-right px-3 py-2 font-semibold text-muted-foreground">New Price</th>
+                      <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Old Margin</th>
+                      <th className="text-right px-3 py-2 font-semibold text-muted-foreground">New Margin</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceHistory.rows.map(h => {
+                      const oldM = Number(h.oldMarginPct ?? 0);
+                      const newM = Number(h.newMarginPct ?? 0);
+                      const improved = newM > oldM;
+                      return (
+                        <tr key={h.id} className="border-b last:border-0 hover:bg-muted/20">
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                            {new Date(h.changedAt).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 font-medium">{h.channelName}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{fmt(h.oldPrice)}</td>
+                          <td className="px-3 py-2 text-right font-medium">{fmt(h.newPrice)}</td>
+                          <td className={`px-3 py-2 text-right ${marginColor(h.oldMarginPct)}`}>{pct(h.oldMarginPct)}</td>
+                          <td className={`px-3 py-2 text-right font-semibold ${marginColor(h.newMarginPct)}`}>
+                            {pct(h.newMarginPct)}
+                            {h.oldMarginPct !== null && h.newMarginPct !== null && (
+                              <span className={`ml-1 text-[10px] ${improved ? 'text-emerald-500' : 'text-red-400'}`}>
+                                {improved ? '▲' : '▼'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground capitalize">{h.changeSource ?? 'manual'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {priceHistory.total > 100 && (
+                  <p className="text-[11px] text-muted-foreground px-3 py-2 border-t">
+                    Showing 100 of {priceHistory.total.toLocaleString()} changes
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {/* Edit Dialog */}

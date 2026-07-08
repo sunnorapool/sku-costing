@@ -178,3 +178,12 @@
 - [x] Margin alert dashboard: summary stats (total alerts, by channel, by product group)
 - [x] Wire all new routes in App.tsx
 - [x] Run tests and save checkpoint
+
+## Phase 10 — Channel Price History
+
+- [x] DB: `channel_price_history` table (id, skuId, channelId, oldPrice, newPrice, oldMarginPct, newMarginPct, changedAt, notes)
+- [x] Run migration SQL via webdev_execute_sql
+- [x] Backend: auto-insert history row on every channelPrices.upsert when price changes
+- [x] Backend: tRPC channelPrices.priceHistory query (by skuId, paginated, sorted newest first)
+- [x] UI: Price history section on SKU detail page — collapsible table showing all channel price changes with old→new, margin change, and timestamp
+- [x] UI: Channel filter dropdown in history section to narrow to one channel

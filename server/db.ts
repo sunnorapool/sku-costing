@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertSku, InsertSkuPricing, InsertSkuVersion, skuPricing, skuVersions, skus, users, channels, channelPrices, Channel, ChannelPrice, cartonDetails } from "../drizzle/schema";
+import { InsertUser, InsertSku, InsertSkuPricing, InsertSkuVersion, skuPricing, skuVersions, skus, users, channels, channelPrices, Channel, ChannelPrice, cartonDetails, channelPriceHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -501,9 +501,17 @@ export async function upsertChannelPrice(data: {
   notes?: string | null;
   effectiveDate?: Date | null;
   landedCost?: string | null; // used to compute margin
+  changeSource?: string; // 'manual' | 'bulk_import' | 'apply_rule'
 }): Promise<ChannelPrice> {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
+
+  // Fetch existing row BEFORE update for history diff
+  const [existing] = await db
+    .select()
+    .from(channelPrices)
+    .where(and(eq(channelPrices.skuId, data.skuId), eq(channelPrices.channelId, data.channelId)))
+    .limit(1);
 
   // Compute margin if price and landedCost are available
   let marginPct: string | null = null;
@@ -552,6 +560,31 @@ export async function upsertChannelPrice(data: {
     .from(channelPrices)
     .where(and(eq(channelPrices.skuId, data.skuId), eq(channelPrices.channelId, data.channelId)))
     .limit(1);
+
+  // Record history if price, floor, or ceiling changed (or it's a new row)
+  const oldPrice = existing?.price ?? null;
+  const newPrice = row?.price ?? null;
+  const priceChanged = oldPrice !== newPrice
+    || (existing?.floorPrice ?? null) !== (row?.floorPrice ?? null)
+    || (existing?.ceilingPrice ?? null) !== (row?.ceilingPrice ?? null);
+
+  if (priceChanged) {
+    await db.insert(channelPriceHistory).values({
+      skuId: data.skuId,
+      channelId: data.channelId,
+      oldPrice: oldPrice,
+      newPrice: newPrice,
+      oldMarginPct: existing?.marginPct ?? null,
+      newMarginPct: row?.marginPct ?? null,
+      oldFloorPrice: existing?.floorPrice ?? null,
+      newFloorPrice: row?.floorPrice ?? null,
+      oldCeilingPrice: existing?.ceilingPrice ?? null,
+      newCeilingPrice: row?.ceilingPrice ?? null,
+      changeSource: data.changeSource ?? 'manual',
+      notes: data.notes ?? null,
+    });
+  }
+
   return row;
 }
 
@@ -778,4 +811,55 @@ export async function getMarginAlerts(channelId?: number, thresholdPct?: number)
     const belowThreshold = margin < threshold;
     return belowFloor || belowThreshold;
   });
+}
+
+// ─── Channel Price History ────────────────────────────────────────────────────
+
+export async function getChannelPriceHistory(
+  skuId: number,
+  options?: { channelId?: number; limit?: number; offset?: number }
+) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+
+  const conditions = [eq(channelPriceHistory.skuId, skuId)];
+  if (options?.channelId) {
+    conditions.push(eq(channelPriceHistory.channelId, options.channelId));
+  }
+
+  const limit = options?.limit ?? 50;
+  const offset = options?.offset ?? 0;
+
+  const rows = await db
+    .select({
+      id: channelPriceHistory.id,
+      skuId: channelPriceHistory.skuId,
+      channelId: channelPriceHistory.channelId,
+      channelName: channels.name,
+      channelType: channels.type,
+      oldPrice: channelPriceHistory.oldPrice,
+      newPrice: channelPriceHistory.newPrice,
+      oldMarginPct: channelPriceHistory.oldMarginPct,
+      newMarginPct: channelPriceHistory.newMarginPct,
+      oldFloorPrice: channelPriceHistory.oldFloorPrice,
+      newFloorPrice: channelPriceHistory.newFloorPrice,
+      oldCeilingPrice: channelPriceHistory.oldCeilingPrice,
+      newCeilingPrice: channelPriceHistory.newCeilingPrice,
+      changeSource: channelPriceHistory.changeSource,
+      notes: channelPriceHistory.notes,
+      changedAt: channelPriceHistory.changedAt,
+    })
+    .from(channelPriceHistory)
+    .innerJoin(channels, eq(channelPriceHistory.channelId, channels.id))
+    .where(and(...conditions))
+    .orderBy(desc(channelPriceHistory.changedAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(channelPriceHistory)
+    .where(and(...conditions));
+
+  return { rows, total: Number(countRow?.count ?? 0) };
 }

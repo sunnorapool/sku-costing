@@ -23,6 +23,7 @@ import {
   getSuppliers,
   bulkImportChannelPrices,
   getMarginAlerts,
+  getChannelPriceHistory,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -715,6 +716,21 @@ Instruction: ${input.prompt}`;
       }).optional())
       .query(async ({ input }) => {
         return getMarginAlerts(input?.channelId, input?.thresholdPct);
+      }),
+
+    priceHistory: publicProcedure
+      .input(z.object({
+        skuId: z.number(),
+        channelId: z.number().optional(),
+        limit: z.number().min(1).max(200).optional(),
+        offset: z.number().min(0).optional(),
+      }))
+      .query(async ({ input }) => {
+        return getChannelPriceHistory(input.skuId, {
+          channelId: input.channelId,
+          limit: input.limit,
+          offset: input.offset,
+        });
       }),
   }),
 });

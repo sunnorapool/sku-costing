@@ -251,3 +251,29 @@ export const cartonDetails = mysqlTable("carton_details", {
 
 export type CartonDetail = typeof cartonDetails.$inferSelect;
 export type InsertCartonDetail = typeof cartonDetails.$inferInsert;
+
+// ─── Channel Price History ────────────────────────────────────────────────────
+
+// Audit trail: every time a channel price changes, a row is inserted here
+export const channelPriceHistory = mysqlTable("channel_price_history", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+  channelId: int("channel_id").notNull(),
+
+  // Snapshot of old and new values
+  oldPrice: decimal("old_price", { precision: 10, scale: 2 }),
+  newPrice: decimal("new_price", { precision: 10, scale: 2 }),
+  oldMarginPct: decimal("old_margin_pct", { precision: 8, scale: 4 }),
+  newMarginPct: decimal("new_margin_pct", { precision: 8, scale: 4 }),
+  oldFloorPrice: decimal("old_floor_price", { precision: 10, scale: 2 }),
+  newFloorPrice: decimal("new_floor_price", { precision: 10, scale: 2 }),
+  oldCeilingPrice: decimal("old_ceiling_price", { precision: 10, scale: 2 }),
+  newCeilingPrice: decimal("new_ceiling_price", { precision: 10, scale: 2 }),
+
+  changeSource: varchar("change_source", { length: 64 }).default("manual"), // manual | bulk_import | apply_rule
+  notes: text("notes"),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+});
+
+export type ChannelPriceHistory = typeof channelPriceHistory.$inferSelect;
+export type InsertChannelPriceHistory = typeof channelPriceHistory.$inferInsert;
