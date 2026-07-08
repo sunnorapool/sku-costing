@@ -18,6 +18,9 @@ import {
   upsertChannelPrice,
   applyChannelPricingRule,
   exportChannelPriceSheet,
+  getCartonDetailsBySkuId,
+  getSourceStatuses,
+  getSuppliers,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -90,6 +93,24 @@ const skuSchema = z.object({
   var2: z.string().nullable().optional(),
   status: z.enum(["active", "done", "new_model", "missing", "discontinued"]).optional(),
   sortOrder: z.number().optional(),
+  // Sourcing fields
+  supplier: z.string().nullable().optional(),
+  htsCode: z.string().nullable().optional(),
+  sourceStatus: z.string().nullable().optional(),
+  isBd: z.string().nullable().optional(),
+  salesQty2024Ytd: z.string().nullable().optional(),
+  avgPrice2024Ytd: z.string().nullable().optional(),
+  salesAmt2024Ytd: z.string().nullable().optional(),
+  cartonL: z.string().nullable().optional(),
+  cartonW: z.string().nullable().optional(),
+  cartonH: z.string().nullable().optional(),
+  grossWtKg: z.string().nullable().optional(),
+  netWtKg: z.string().nullable().optional(),
+  pcsPerCarton: z.string().nullable().optional(),
+  grossWtPerUnit: z.string().nullable().optional(),
+  netWtPerUnit: z.string().nullable().optional(),
+  packingType: z.string().nullable().optional(),
+  cartonCount: z.number().nullable().optional(),
 });
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -115,6 +136,8 @@ export const appRouter = router({
           productGroup: z.string().optional(),
           status: z.string().optional(),
           brand: z.string().optional(),
+          sourceStatus: z.string().optional(),
+          supplier: z.string().optional(),
           limit: z.number().min(1).max(500).optional(),
           offset: z.number().min(0).optional(),
           ids: z.array(z.number()).optional(),
@@ -122,6 +145,20 @@ export const appRouter = router({
       )
       .query(async ({ input }) => {
         return getSkuList(input);
+      }),
+
+    sourceStatuses: publicProcedure.query(async () => {
+      return getSourceStatuses();
+    }),
+
+    suppliers: publicProcedure.query(async () => {
+      return getSuppliers();
+    }),
+
+    cartonDetails: publicProcedure
+      .input(z.object({ skuId: z.number() }))
+      .query(async ({ input }) => {
+        return getCartonDetailsBySkuId(input.skuId);
       }),
 
     get: publicProcedure

@@ -142,3 +142,20 @@
 - [x] SKU Costing: Brand filter — detect brand from SKU prefix/description, add toggle buttons (BD, Sunnora, Blue Torrent, All)
 - [x] SKU Costing: Brand filter persists across page navigation (localStorage)
 - [x] Backend: tRPC channelPrices.exportSheet — returns all priced SKUs for a channel with full pricing data
+
+## Asia SKU Merge (Phase 7)
+
+- [x] DB: Add new columns to skus table: supplier, htsCode, sourceStatus, salesQty2024Ytd, avgPrice2024Ytd, salesAmt2024Ytd, cartonL, cartonW, cartonH, grossWtKg, netWtKg, pcsPerCarton, grossWtPerUnit, netWtPerUnit, packingType
+- [x] DB: New carton_details table (id, skuId, cartonNum, cartonLabel, componentSku, qtyPerParent, componentSellable, packRuleStatus, cartonL, cartonW, cartonH, grossWtKg, netWtKg, pcsPerCarton, grossWtPerUnit, netWtPerUnit, packingType, verifiedBy, verifiedAt, notes)
+- [x] Run migration SQL via webdev_execute_sql
+- [x] Import script: match Asia SKUs to existing SKUs by sku code, update fields; add new SKUs for unmatched rows
+- [x] Import carton_details rows from Carton Details sheet
+- [x] Backend: update getSkuList to return new fields
+- [x] Backend: add cartonDetails.bySku tRPC query
+- [x] Backend: update createSku/updateSku to accept new fields
+- [x] UI: Add new column group "Sourcing Info" to SKU table (supplier, HTS, packing type, carton dims)
+- [x] UI: Add Source Status filter dropdown
+- [x] UI: Add Supplier filter dropdown
+- [x] UI: Carton Details button per row (Package icon)
+- [ ] UI: Update Add/Edit SKU dialogs with new fields
+- [ ] Update CSV import/export to include new fields

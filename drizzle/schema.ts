@@ -34,6 +34,30 @@ export const skus = mysqlTable("skus", {
   var2: varchar("var2", { length: 128 }), // e.g. speed, cord type
   status: mysqlEnum("status", ["active", "done", "new_model", "missing", "discontinued"]).default("active").notNull(),
   sortOrder: int("sort_order").default(0),
+
+  // Asia sourcing fields
+  supplier: varchar("supplier", { length: 128 }),
+  htsCode: varchar("hts_code", { length: 32 }),
+  sourceStatus: varchar("source_status", { length: 128 }), // e.g. Ready for costing, Needs packaging
+  isBd: varchar("is_bd", { length: 8 }), // Yes/No — Black & Decker branded
+
+  // Sales data (2024-2026 YTD)
+  salesQty2024Ytd: decimal("sales_qty_2024_ytd", { precision: 14, scale: 2 }),
+  avgPrice2024Ytd: decimal("avg_price_2024_ytd", { precision: 10, scale: 4 }),
+  salesAmt2024Ytd: decimal("sales_amt_2024_ytd", { precision: 14, scale: 2 }),
+
+  // Carton / shipping dimensions
+  cartonL: decimal("carton_l", { precision: 8, scale: 2 }),  // cm
+  cartonW: decimal("carton_w", { precision: 8, scale: 2 }),  // cm
+  cartonH: decimal("carton_h", { precision: 8, scale: 2 }),  // cm
+  grossWtKg: decimal("gross_wt_kg", { precision: 8, scale: 3 }),
+  netWtKg: decimal("net_wt_kg", { precision: 8, scale: 3 }),
+  pcsPerCarton: decimal("pcs_per_carton", { precision: 8, scale: 2 }),
+  grossWtPerUnit: decimal("gross_wt_per_unit", { precision: 8, scale: 3 }),
+  netWtPerUnit: decimal("net_wt_per_unit", { precision: 8, scale: 3 }),
+  packingType: varchar("packing_type", { length: 64 }),
+  cartonCount: int("carton_count"),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -197,3 +221,33 @@ export const channelPrices = mysqlTable("channel_prices", {
 
 export type ChannelPrice = typeof channelPrices.$inferSelect;
 export type InsertChannelPrice = typeof channelPrices.$inferInsert;
+
+// ─── Carton Details ───────────────────────────────────────────────────────────
+
+export const cartonDetails = mysqlTable("carton_details", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+  cartonNum: decimal("carton_num", { precision: 6, scale: 1 }),
+  cartonLabel: varchar("carton_label", { length: 256 }),
+  componentSku: varchar("component_sku", { length: 64 }),
+  qtyPerParent: decimal("qty_per_parent", { precision: 8, scale: 2 }),
+  componentSellable: varchar("component_sellable", { length: 8 }), // Yes/No
+  packRuleStatus: varchar("pack_rule_status", { length: 128 }),
+  cartonL: decimal("carton_l", { precision: 8, scale: 2 }),
+  cartonW: decimal("carton_w", { precision: 8, scale: 2 }),
+  cartonH: decimal("carton_h", { precision: 8, scale: 2 }),
+  grossWtKg: decimal("gross_wt_kg", { precision: 8, scale: 3 }),
+  netWtKg: decimal("net_wt_kg", { precision: 8, scale: 3 }),
+  pcsPerCarton: decimal("pcs_per_carton", { precision: 8, scale: 2 }),
+  grossWtPerUnit: decimal("gross_wt_per_unit", { precision: 8, scale: 3 }),
+  netWtPerUnit: decimal("net_wt_per_unit", { precision: 8, scale: 3 }),
+  packingType: varchar("packing_type", { length: 64 }),
+  verifiedBy: varchar("verified_by", { length: 256 }),
+  verifiedAt: timestamp("verified_at"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CartonDetail = typeof cartonDetails.$inferSelect;
+export type InsertCartonDetail = typeof cartonDetails.$inferInsert;

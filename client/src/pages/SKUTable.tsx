@@ -11,6 +11,7 @@ import {
   Edit2,
   Filter,
   Loader2,
+  Package,
   Plus,
   RefreshCw,
   Search,
@@ -36,6 +37,21 @@ type SkuRow = {
     var2: string | null;
     status: "active" | "done" | "new_model" | "missing" | "discontinued";
     sortOrder: number | null;
+    supplier: string | null;
+    htsCode: string | null;
+    sourceStatus: string | null;
+    isBd: string | null;
+    salesQty2024Ytd: string | null;
+    avgPrice2024Ytd: string | null;
+    salesAmt2024Ytd: string | null;
+    cartonL: string | null;
+    cartonW: string | null;
+    cartonH: string | null;
+    grossWtKg: string | null;
+    netWtKg: string | null;
+    pcsPerCarton: string | null;
+    packingType: string | null;
+    cartonCount: number | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -478,6 +494,9 @@ function ColGroupHeader({ isAdmin }: { isAdmin: boolean }) {
       <th colSpan={1} className="px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider col-group-notes border-b border-l">
         Notes
       </th>
+      <th colSpan={7} className="px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider bg-teal-50/80 text-teal-700 border-b border-l">
+        Sourcing Info
+      </th>
       {isAdmin && (
         <th className="px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider col-group-sku border-b border-l">
           Actions
@@ -493,8 +512,11 @@ export default function SKUTable() {
   const [productGroup, setProductGroup] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>(() => localStorage.getItem("sku-brand-filter") ?? "");
+  const [sourceStatusFilter, setSourceStatusFilter] = useState<string>("");
+  const [supplierFilter, setSupplierFilter] = useState<string>("");
   const [page, setPage] = useState(0);
   const [aiFilterIds, setAiFilterIds] = useState<number[] | null>(null);
+  const [cartonDetailSkuId, setCartonDetailSkuId] = useState<number | null>(null);
 
   const BRANDS = [
     { label: "All", value: "" },
@@ -521,12 +543,21 @@ export default function SKUTable() {
     productGroup: productGroup || undefined,
     status: statusFilter || undefined,
     brand: brandFilter || undefined,
+    sourceStatus: sourceStatusFilter || undefined,
+    supplier: supplierFilter || undefined,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
     ids: aiFilterIds ?? undefined,
   });
 
   const { data: productGroups } = trpc.skus.productGroups.useQuery();
+  const { data: sourceStatuses } = trpc.skus.sourceStatuses.useQuery();
+  const { data: suppliers } = trpc.skus.suppliers.useQuery();
+
+  const { data: cartonDetails } = trpc.skus.cartonDetails.useQuery(
+    { skuId: cartonDetailSkuId! },
+    { enabled: cartonDetailSkuId !== null }
+  );
 
   const deleteMutation = trpc.skus.delete.useMutation({
     onSuccess: () => {
@@ -585,6 +616,30 @@ export default function SKUTable() {
             <SelectItem value="_all">All Statuses</SelectItem>
             {Object.entries(STATUS_LABELS).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sourceStatusFilter || "_all"} onValueChange={v => { setSourceStatusFilter(v === "_all" ? "" : v); setPage(0); }}>
+          <SelectTrigger className="h-9 w-[200px] text-sm bg-white">
+            <SelectValue placeholder="All Source Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">All Source Statuses</SelectItem>
+            {(sourceStatuses ?? []).map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={supplierFilter || "_all"} onValueChange={v => { setSupplierFilter(v === "_all" ? "" : v); setPage(0); }}>
+          <SelectTrigger className="h-9 w-[160px] text-sm bg-white">
+            <SelectValue placeholder="All Suppliers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">All Suppliers</SelectItem>
+            {(suppliers ?? []).map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -697,6 +752,14 @@ export default function SKUTable() {
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60">BD Fee</th>
                 {/* Notes */}
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-l min-w-[180px] bg-slate-50">Notes</th>
+                {/* Sourcing Info */}
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 border-l min-w-[110px] bg-teal-50/60">Supplier</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[110px] bg-teal-50/60">HTS Code</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[140px] bg-teal-50/60">Source Status</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[60px] bg-teal-50/60">B&amp;D?</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[80px] bg-teal-50/60">Packing</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-teal-700 min-w-[120px] bg-teal-50/60">Sales Qty YTD</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-teal-700 min-w-[120px] bg-teal-50/60">Sales Amt YTD</th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground border-l min-w-[80px] bg-slate-50">Actions</th>
               </tr>
             </thead>
@@ -767,8 +830,38 @@ export default function SKUTable() {
                       {(row.pricing as any)?.notes ?? "—"}
                     </span>
                   </td>
+                  {/* Sourcing Info */}
+                  <td className="px-3 py-2 text-xs border-l text-teal-800">{row.sku.supplier ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs font-mono text-teal-700">{row.sku.htsCode ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {row.sku.sourceStatus ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-teal-50 text-teal-700 border border-teal-200 font-medium whitespace-nowrap">
+                        {row.sku.sourceStatus}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-center">
+                    {row.sku.isBd === "Yes" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200 font-semibold">BD</span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-teal-700 font-mono">{row.sku.packingType ?? "—"}</td>
+                  <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+                    {row.sku.salesQty2024Ytd ? Number(row.sku.salesQty2024Ytd).toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+                    {row.sku.salesAmt2024Ytd ? `$${Number(row.sku.salesAmt2024Ytd).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "—"}
+                  </td>
                   <td className="px-3 py-2 border-l">
                     <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 hover:bg-teal-50 hover:text-teal-600"
+                        title="View carton details"
+                        onClick={() => setCartonDetailSkuId(row.sku.id === cartonDetailSkuId ? null : row.sku.id)}
+                      >
+                        <Package className="h-3.5 w-3.5" />
+                      </Button>
                       <Button
                         variant="ghost" size="icon"
                         className="h-7 w-7 hover:bg-primary/10 hover:text-primary"

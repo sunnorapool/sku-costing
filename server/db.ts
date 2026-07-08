@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertSku, InsertSkuPricing, InsertSkuVersion, skuPricing, skuVersions, skus, users, channels, channelPrices, Channel, ChannelPrice } from "../drizzle/schema";
+import { InsertUser, InsertSku, InsertSkuPricing, InsertSkuVersion, skuPricing, skuVersions, skus, users, channels, channelPrices, Channel, ChannelPrice, cartonDetails } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -91,6 +91,12 @@ export async function getSkuList(filters?: {
         like(skus.description, `%${filters.brand}%`)
       )
     );
+  }
+  if ((filters as any)?.sourceStatus) {
+    conditions.push(eq(skus.sourceStatus, (filters as any).sourceStatus));
+  }
+  if ((filters as any)?.supplier) {
+    conditions.push(eq(skus.supplier, (filters as any).supplier));
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -629,4 +635,36 @@ export async function exportChannelPriceSheet(
     .orderBy(skus.sku);
 
   return rows;
+}
+
+// ─── Carton Details ───────────────────────────────────────────────────────────
+
+export async function getCartonDetailsBySkuId(skuId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(cartonDetails)
+    .where(eq(cartonDetails.skuId, skuId))
+    .orderBy(cartonDetails.cartonNum);
+}
+
+export async function getSourceStatuses() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .selectDistinct({ sourceStatus: skus.sourceStatus })
+    .from(skus)
+    .where(sql`${skus.sourceStatus} IS NOT NULL AND ${skus.sourceStatus} != ''`);
+  return rows.map(r => r.sourceStatus).filter(Boolean).sort() as string[];
+}
+
+export async function getSuppliers() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .selectDistinct({ supplier: skus.supplier })
+    .from(skus)
+    .where(sql`${skus.supplier} IS NOT NULL AND ${skus.supplier} != ''`);
+  return rows.map(r => r.supplier).filter(Boolean).sort() as string[];
 }
