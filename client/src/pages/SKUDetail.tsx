@@ -272,7 +272,7 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wide">
             <DollarSign className="h-3.5 w-3.5" />Channel Prices
-            <span className="ml-auto text-[10px] text-muted-foreground font-normal normal-case">Click a row to edit</span>
+            <span className="ml-1 text-[10px] text-muted-foreground font-normal normal-case">Click a row to edit</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -281,7 +281,57 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
               <Loader2 className="h-4 w-4 animate-spin" />Loading channel prices…
             </div>
           ) : !channelPrices || channelPrices.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No channel prices set for this SKU yet.</p>
+            <div className="py-4 space-y-3">
+              <p className="text-sm text-muted-foreground">No channel prices set for this SKU yet.</p>
+              <div className="flex flex-wrap gap-2">
+                {(channels ?? []).map(ch => (
+                  <Popover key={ch.id} open={editingChannelId === ch.id} onOpenChange={(open) => { if (!open) setEditingChannelId(null); }}>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openCpEdit(ch.id)}>
+                        <Pencil className="h-3 w-3 mr-1.5" />{ch.name}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-4" align="start">
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold">{ch.name} — Set Price</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Price</Label>
+                            <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.price} onChange={e => setCpForm(f => ({ ...f, price: e.target.value }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Target Margin %</Label>
+                            <Input className="h-7 text-xs" placeholder="35" value={cpForm.targetMarginPct} onChange={e => setCpForm(f => ({ ...f, targetMarginPct: e.target.value }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Floor Price</Label>
+                            <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.floorPrice} onChange={e => setCpForm(f => ({ ...f, floorPrice: e.target.value }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Ceiling Price</Label>
+                            <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.ceilingPrice} onChange={e => setCpForm(f => ({ ...f, ceilingPrice: e.target.value }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Competitor Price</Label>
+                            <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.competitorPrice} onChange={e => setCpForm(f => ({ ...f, competitorPrice: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Notes</Label>
+                          <Textarea className="text-xs min-h-[56px] resize-none" placeholder="Notes…" value={cpForm.notes} onChange={e => setCpForm(f => ({ ...f, notes: e.target.value }))} />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingChannelId(null)}>Cancel</Button>
+                          <Button size="sm" className="h-7 text-xs" onClick={saveCpEdit} disabled={upsertChannelPrice.isPending}>
+                            {upsertChannelPrice.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="overflow-auto rounded-lg border">
               <table className="w-full text-xs">
@@ -376,6 +426,65 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
               </table>
             </div>
           )}
+          {/* Unpriced channels — always show below table when some channels exist */}
+          {!channelLoading && channelPrices && channelPrices.length > 0 && (() => {
+            const pricedIds = new Set(channelPrices.map(cp => cp.channelId));
+            const unpriced = (channels ?? []).filter(ch => !pricedIds.has(ch.id));
+            if (unpriced.length === 0) return null;
+            return (
+              <div className="mt-3 pt-3 border-t">
+                <p className="text-[11px] text-muted-foreground mb-2 font-medium">Add price for:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {unpriced.map(ch => (
+                    <Popover key={ch.id} open={editingChannelId === ch.id} onOpenChange={(open) => { if (!open) setEditingChannelId(null); }}>
+                      <PopoverTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => openCpEdit(ch.id)}>
+                          <Pencil className="h-2.5 w-2.5 mr-1" />{ch.name}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-4" align="start">
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold">{ch.name} — Set Price</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Price</Label>
+                              <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.price} onChange={e => setCpForm(f => ({ ...f, price: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Target Margin %</Label>
+                              <Input className="h-7 text-xs" placeholder="35" value={cpForm.targetMarginPct} onChange={e => setCpForm(f => ({ ...f, targetMarginPct: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Floor Price</Label>
+                              <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.floorPrice} onChange={e => setCpForm(f => ({ ...f, floorPrice: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Ceiling Price</Label>
+                              <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.ceilingPrice} onChange={e => setCpForm(f => ({ ...f, ceilingPrice: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Competitor Price</Label>
+                              <Input className="h-7 text-xs" placeholder="0.00" value={cpForm.competitorPrice} onChange={e => setCpForm(f => ({ ...f, competitorPrice: e.target.value }))} />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Notes</Label>
+                            <Textarea className="text-xs min-h-[56px] resize-none" placeholder="Notes…" value={cpForm.notes} onChange={e => setCpForm(f => ({ ...f, notes: e.target.value }))} />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingChannelId(null)}>Cancel</Button>
+                            <Button size="sm" className="h-7 text-xs" onClick={saveCpEdit} disabled={upsertChannelPrice.isPending}>
+                              {upsertChannelPrice.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                            </Button>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
