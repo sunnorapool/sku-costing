@@ -517,6 +517,7 @@ export default function SKUTable() {
   const [page, setPage] = useState(0);
   const [aiFilterIds, setAiFilterIds] = useState<number[] | null>(null);
   const [cartonDetailSkuId, setCartonDetailSkuId] = useState<number | null>(null);
+  const [cartonDetailSkuLabel, setCartonDetailSkuLabel] = useState<string>("");
 
   const BRANDS = [
     { label: "All", value: "" },
@@ -554,7 +555,7 @@ export default function SKUTable() {
   const { data: sourceStatuses } = trpc.skus.sourceStatuses.useQuery();
   const { data: suppliers } = trpc.skus.suppliers.useQuery();
 
-  const { data: cartonDetails } = trpc.skus.cartonDetails.useQuery(
+  const { data: cartonDetails, isLoading: cartonDetailsLoading } = trpc.skus.cartonDetails.useQuery(
     { skuId: cartonDetailSkuId! },
     { enabled: cartonDetailSkuId !== null }
   );
@@ -858,7 +859,10 @@ export default function SKUTable() {
                         variant="ghost" size="icon"
                         className="h-7 w-7 hover:bg-teal-50 hover:text-teal-600"
                         title="View carton details"
-                        onClick={() => setCartonDetailSkuId(row.sku.id === cartonDetailSkuId ? null : row.sku.id)}
+                        onClick={() => {
+                          setCartonDetailSkuId(row.sku.id);
+                          setCartonDetailSkuLabel(row.sku.sku);
+                        }}
                       >
                         <Package className="h-3.5 w-3.5" />
                       </Button>
@@ -921,6 +925,77 @@ export default function SKUTable() {
           onSaved={() => { setEditingSku(null); utils.skus.list.invalidate(); }}
         />
       )}
+      {/* Carton Details Dialog */}
+      <Dialog open={cartonDetailSkuId !== null} onOpenChange={() => setCartonDetailSkuId(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-teal-600" />
+              Carton Details — <span className="font-mono text-primary">{cartonDetailSkuLabel}</span>
+            </DialogTitle>
+          </DialogHeader>
+          {cartonDetailsLoading ? (
+            <div className="flex items-center justify-center py-12 gap-3 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="text-sm">Loading carton details…</span>
+            </div>
+          ) : cartonDetails && cartonDetails.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+              <Package className="h-10 w-10 opacity-20" />
+              <p className="text-sm">No carton details on file for this SKU.</p>
+            </div>
+          ) : (
+            <div className="overflow-auto rounded-lg border">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-teal-50 border-b">
+                    <th className="px-3 py-2 text-left font-semibold text-teal-700">#</th>
+                    <th className="px-3 py-2 text-left font-semibold text-teal-700">Label</th>
+                    <th className="px-3 py-2 text-left font-semibold text-teal-700">Component SKU</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">Qty</th>
+                    <th className="px-3 py-2 text-center font-semibold text-teal-700">Sellable</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">L (cm)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">W (cm)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">H (cm)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">Gross Wt (kg)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">Net Wt (kg)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-teal-700">Pcs/Ctn</th>
+                    <th className="px-3 py-2 text-left font-semibold text-teal-700">Packing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(cartonDetails ?? []).map((cd: any, i: number) => (
+                    <tr key={cd.id ?? i} className={`border-b last:border-0 ${i % 2 === 1 ? "bg-slate-50/40" : ""}`}>
+                      <td className="px-3 py-2 text-muted-foreground">{cd.cartonNum ?? i + 1}</td>
+                      <td className="px-3 py-2 font-medium">{cd.cartonLabel ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-primary">{cd.componentSku ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.qtyPerParent ?? "—"}</td>
+                      <td className="px-3 py-2 text-center">
+                        {cd.componentSellable === "Yes" ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">Yes</span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-50 text-gray-500 border border-gray-200">No</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.cartonL ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.cartonW ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.cartonH ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.grossWtKg ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.netWtKg ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cd.pcsPerCarton ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono">{cd.packingType ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCartonDetailSkuId(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>

@@ -367,6 +367,7 @@ function escapeCSV(val: string | null | undefined): string {
 function PricingMatrix({ channelType }: MatrixProps) {
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState("all");
+  const [supplierFilter, setSupplierFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [exportingChannelId, setExportingChannelId] = useState<number | null>(null);
@@ -382,12 +383,14 @@ function PricingMatrix({ channelType }: MatrixProps) {
   };
 
   const productGroupsQuery = trpc.skus.productGroups.useQuery();
+  const suppliersQuery = trpc.skus.suppliers.useQuery();
 
   const matrixQuery = trpc.channelPrices.matrix.useQuery(
     {
       channelType,
       search: debouncedSearch || undefined,
       productGroup: productGroup !== "all" ? productGroup : undefined,
+      supplier: supplierFilter !== "all" ? supplierFilter : undefined,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     },
@@ -438,6 +441,17 @@ function PricingMatrix({ channelType }: MatrixProps) {
             <SelectItem value="all" className="text-xs">All Product Groups</SelectItem>
             {(productGroupsQuery.data ?? []).map((g) => (
               <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={supplierFilter} onValueChange={(v) => { setSupplierFilter(v); setPage(0); }}>
+          <SelectTrigger className="h-8 text-xs w-40">
+            <SelectValue placeholder="All Suppliers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All Suppliers</SelectItem>
+            {(suppliersQuery.data ?? []).map((s) => (
+              <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>

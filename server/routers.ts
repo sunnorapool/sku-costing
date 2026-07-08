@@ -619,6 +619,7 @@ Instruction: ${input.prompt}`;
           channelType: z.enum(['online', 'wholesale']),
           search: z.string().optional(),
           productGroup: z.string().optional(),
+          supplier: z.string().optional(),
           limit: z.number().min(1).max(500).optional(),
           offset: z.number().min(0).optional(),
         })
@@ -627,6 +628,7 @@ Instruction: ${input.prompt}`;
         return getChannelPricingMatrix(input.channelType, {
           search: input.search,
           productGroup: input.productGroup,
+          supplier: input.supplier,
           limit: input.limit,
           offset: input.offset,
         });

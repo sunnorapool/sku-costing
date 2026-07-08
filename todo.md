@@ -159,3 +159,9 @@
 - [x] UI: Carton Details button per row (Package icon)
 - [x] UI: Update Edit SKU dialog with new sourcing fields (supplier, HTS, source status, B&D, carton dims, weights, packing, sales data)
 - [x] Update CSV import/export to include new fields (deferred — tracked as future enhancement)
+
+## Phase 8 — Three Feature Additions
+
+- [x] Carton Details modal: clicking the package icon on a SKU row opens a dialog showing the carton_details sub-table (carton #, label, component SKU, qty, sellable, dims, weights, packing type)
+- [x] Channel Pricing: add Supplier filter dropdown to filter the pricing matrix by supplier
+- [x] CSV Export: update SKU export to include all new sourcing fields (supplier, HTS code, source status, B&D, packing type, carton L/W/H, gross/net weight, pcs per carton, sales qty/price/amount YTD)

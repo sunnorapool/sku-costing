@@ -52,6 +52,21 @@ const CSV_HEADERS = [
   "asiaMarginPct",
   "bdFee",
   "notes",
+  // Sourcing fields
+  "supplier",
+  "htsCode",
+  "sourceStatus",
+  "isBd",
+  "packingType",
+  "pcsPerCarton",
+  "cartonL",
+  "cartonW",
+  "cartonH",
+  "grossWtKg",
+  "netWtKg",
+  "salesQty2024Ytd",
+  "avgPrice2024Ytd",
+  "salesAmt2024Ytd",
 ];
 
 const CSV_HEADER_LABELS: Record<string, string> = {
@@ -92,6 +107,21 @@ const CSV_HEADER_LABELS: Record<string, string> = {
   asiaMarginPct: "Asia Margin %",
   bdFee: "BD Fee",
   notes: "Notes",
+  // Sourcing
+  supplier: "Supplier",
+  htsCode: "HTS Code",
+  sourceStatus: "Source Status",
+  isBd: "B&D?",
+  packingType: "Packing Type",
+  pcsPerCarton: "Pcs/Carton",
+  cartonL: "Carton L (cm)",
+  cartonW: "Carton W (cm)",
+  cartonH: "Carton H (cm)",
+  grossWtKg: "Gross Wt (kg)",
+  netWtKg: "Net Wt (kg)",
+  salesQty2024Ytd: "Sales Qty YTD",
+  avgPrice2024Ytd: "Avg Price YTD",
+  salesAmt2024Ytd: "Sales Amt YTD",
 };
 
 function escapeCSV(val: string | null | undefined): string {

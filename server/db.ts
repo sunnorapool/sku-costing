@@ -435,7 +435,7 @@ export async function getChannelPricesByChannel(
 // Matrix: all SKUs (with pricing) + all channel prices for a given channel type
 export async function getChannelPricingMatrix(
   channelType: 'online' | 'wholesale',
-  filters?: { search?: string; productGroup?: string; limit?: number; offset?: number }
+  filters?: { search?: string; productGroup?: string; supplier?: string; limit?: number; offset?: number }
 ) {
   const db = await getDb();
   if (!db) return { skus: [], channels: [], prices: [], total: 0 };
@@ -448,6 +448,9 @@ export async function getChannelPricingMatrix(
   }
   if (filters?.productGroup) {
     skuConditions.push(eq(skus.productGroup, filters.productGroup));
+  }
+  if (filters?.supplier) {
+    skuConditions.push(eq(skus.supplier, filters.supplier));
   }
 
   const limit = filters?.limit ?? 100;
