@@ -1,17 +1,20 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import EditSKUDialog from "@/components/EditSKUDialog";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
   Box,
   DollarSign,
+  Edit2,
   Loader2,
   Package,
   Tag,
   TrendingUp,
   Truck,
 } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ function Row({ label, value, className = "" }: { label: string; value: React.Rea
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SKUDetail({ skuId }: { skuId: number }) {
   const [, setLocation] = useLocation();
+  const [editing, setEditing] = useState(false);
+  const utils = trpc.useUtils();
 
   const { data, isLoading, error } = trpc.skus.get.useQuery({ id: skuId });
   const { data: cartonDetails, isLoading: cartonLoading } = trpc.skus.cartonDetails.useQuery({ skuId });
@@ -89,6 +94,9 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-bold font-mono text-primary">{sku.sku}</h1>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="ml-auto shrink-0">
+              <Edit2 className="h-3.5 w-3.5 mr-1.5" />Edit SKU
+            </Button>
             <Badge variant={sku.status === "active" ? "default" : "secondary"} className="capitalize">
               {sku.status}
             </Badge>
@@ -318,6 +326,19 @@ export default function SKUDetail({ skuId }: { skuId: number }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      {editing && data && (
+        <EditSKUDialog
+          open={editing}
+          sku={data}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            utils.skus.get.invalidate({ id: skuId });
+          }}
+        />
+      )}
     </div>
   );
 }
