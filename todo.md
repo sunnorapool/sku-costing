@@ -187,3 +187,13 @@
 - [x] Backend: tRPC channelPrices.priceHistory query (by skuId, paginated, sorted newest first)
 - [x] UI: Price history section on SKU detail page — collapsible table showing all channel price changes with old→new, margin change, and timestamp
 - [x] UI: Channel filter dropdown in history section to narrow to one channel
+
+## Phase 11 — Model Lookup + Email Digest
+
+- [x] Model Lookup page: /lookup — type any SKU/model code, see carton dims, weights, packing type, supplier, HTS code, sourcing status
+- [x] Model Lookup: instant search (debounced), fuzzy match on SKU code and description
+- [x] Model Lookup: sidebar nav entry "Model Lookup" with Search icon
+- [x] Email digest: Bootstrap Heartbeat SDK
+- [x] Email digest: /api/scheduled/margin-digest handler — query margin alerts, build HTML email, send to Chuck/Dan/Ben
+- [x] Email digest: HTML email with summary stats + top 20 worst-margin SKUs table
+- [ ] Email digest: register daily cron at 8am ET (13:00 UTC) via manus-heartbeat CLI after deploy (requires publish first)
