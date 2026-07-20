@@ -296,6 +296,11 @@ export const supplySideRouter = router({
       const hmfPct = cfg["hmf_pct"] ?? 0.00125;
       const mpfPct = cfg["mpf_pct"] ?? 0.003464;
 
+      // Section 122 toggle: enabled by default unless explicitly disabled via freight_config key
+      // sec122_enabled: 1 = on, 0 = off. Expiry date stored as sec122_expiry_ts (unix ms).
+      // Per Ian: Sec 122 expires July 24, 2026 unless Congress extends. Toggle allows easy on/off.
+      const sec122Enabled = cfg["sec122_enabled"] !== undefined ? cfg["sec122_enabled"] !== 0 : true;
+
       // Look up HTS tariff rates
       let baseDutyPct = 0, sec301Pct = 0, sec232Pct = 0, sec122Pct = 0;
       let htsRow = null;
@@ -309,7 +314,8 @@ export const supplySideRouter = router({
           baseDutyPct = Number(htsRow.baseDutyPct ?? 0) / 100;
           sec301Pct = Number(htsRow.sec301Pct ?? 0) / 100;
           sec232Pct = Number(htsRow.sec232Pct ?? 0) / 100;
-          sec122Pct = Number(htsRow.sec122Pct ?? 0) / 100;
+          // Apply Section 122 only if toggle is enabled
+          sec122Pct = sec122Enabled ? Number(htsRow.sec122Pct ?? 0) / 100 : 0;
         }
       }
 
@@ -368,7 +374,7 @@ export const supplySideRouter = router({
           { label: "Origin Load", amount: loadAmt, formula: `FOB × ${(loadPct * 100).toFixed(1)}%`, source: "Origin handling & inland freight to port" },
           { label: "Section 301 Tariff", amount: fob * sec301Pct, formula: `FOB × ${(sec301Pct * 100).toFixed(1)}%`, source: "USTR Section 301 China tariff" },
           { label: "Section 232 Tariff", amount: fob * sec232Pct, formula: `FOB × ${(sec232Pct * 100).toFixed(1)}%`, source: "Section 232 steel/aluminum surcharge" },
-          { label: "Section 122 Tariff", amount: fob * sec122Pct, formula: `FOB × ${(sec122Pct * 100).toFixed(1)}%`, source: "Section 122 additional tariff" },
+          { label: "Section 122 Tariff", amount: fob * sec122Pct, formula: `FOB × ${(sec122Pct * 100).toFixed(1)}%`, source: `Section 122 additional tariff — ${sec122Enabled ? "ACTIVE (toggle in Freight Config)" : "DISABLED — toggle in Freight Config"}`, disabled: !sec122Enabled },
           { label: "Base Duty", amount: dutyAmt, formula: `FOB × ${(baseDutyPct * 100).toFixed(2)}%`, source: `HTS ${input.htsCode ?? "—"} standard duty rate` },
           { label: "Ocean Freight", amount: oceanFreightAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × $${oceanPerCuft}/cu ft` : "No dims — enter carton dimensions", source: "Volumetric rate — confirm with Chuck" },
           { label: "Destination Charges", amount: destinationAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × ($${destinationTotal} ÷ ${containerUsableCuft} cu ft)` : "No dims", source: "Lynden invoice #40726271: chassis, yard prepull & storage, driver detention" },

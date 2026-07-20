@@ -38,6 +38,9 @@ import { eq, and, inArray, desc, asc, like, or, isNull, sql } from "drizzle-orm"
 import bcrypt from "bcryptjs";
 
 // ─── BD Royalty category map ──────────────────────────────────────────────────
+// Note: B&D SKUs in unmapped categories (Parts & Replacement, Uncategorized) are
+// confirmed 0% royalty by Dan Schonfeld (July 20, 2026). The ?? 0 fallback below
+// is intentional and correct — do not add a catch-all rate.
 
 const BD_ROYALTY_BY_CATEGORY: Record<string, number> = {
   "Above Ground Pumps": 0.035,
@@ -61,9 +64,18 @@ const BD_ROYALTY_BY_CATEGORY: Record<string, number> = {
   "Ladders & Steps": 0.04,
 };
 
+// BD_EXEMPT_CATEGORIES: categories where B&D SKUs are confirmed 0% royalty by Dan.
+// These resolve to 0 via the ?? 0 fallback — listed here for documentation only.
+const BD_EXEMPT_CATEGORIES = new Set([
+  "Parts & Replacement",
+  "Uncategorized",
+]);
+
 function getRoyaltyPct(category: string | null | undefined, isBd: string | null | undefined): number {
   if (!isBd || isBd.toLowerCase() !== "yes") return 0;
   if (!category) return 0;
+  // Explicitly confirmed 0% by Dan for these categories
+  if (BD_EXEMPT_CATEGORIES.has(category)) return 0;
   return BD_ROYALTY_BY_CATEGORY[category] ?? 0;
 }
 
@@ -506,12 +518,22 @@ export const dealerPricingRouter = router({
         const costBasis =
           pricingBasis === "factory_cost" ? (factoryCost ?? landedCost) : landedCost;
 
+        // BLOCKED: SKUs with no cost basis cannot be priced — return blocked flag instead of zero
+        const isBlocked = costBasis === null || costBasis <= 0;
+
+        // Cost delta (cost-vs-cost): 2027 landed cost vs historical avg FOB cost
+        // Per Dan (July 20, 2026): tariff is a separate line item, so compare cost to cost, not price to price
+        const histAvgCost = skuRow.fob26Costing ? parseFloat(skuRow.fob26Costing) : null;
+        const costDelta = landedCost !== null && histAvgCost !== null && histAvgCost > 0
+          ? Math.round(((landedCost - histAvgCost) / histAvgCost) * 10000) / 10000
+          : null;
+
         let importList: number | null = null;
         let domesticList: number | null = null;
 
-        if (costBasis !== null && costBasis > 0) {
-          importList = computeListPrice(costBasis, importMargin, royaltyPct);
-          domesticList = computeListPrice(costBasis, domesticMargin, royaltyPct);
+        if (!isBlocked) {
+          importList = computeListPrice(costBasis!, importMargin, royaltyPct);
+          domesticList = computeListPrice(costBasis!, domesticMargin, royaltyPct);
         }
 
         // Compute per-customer net prices
@@ -585,6 +607,9 @@ export const dealerPricingRouter = router({
           landedCost,
           factoryCost,
           costBasis,
+          isBlocked,
+          histAvgCost,
+          costDelta,
           importMargin,
           domesticMargin,
           royaltyPct,

@@ -630,6 +630,7 @@ function BuySideMatrix() {
               <TableHead>Category</TableHead>
               <TableHead>2027 FOB Status</TableHead>
               <TableHead className="text-right">Cost Basis</TableHead>
+              <TableHead className="text-right" title="Cost-vs-cost: 2027 landed cost vs 2026 avg FOB cost. Per Dan: tariff is a separate line item so compare cost to cost.">vs 2026 Cost</TableHead>
               {!selectedCustomerId ? (
                 // Overview: show list prices + L1/L2/L3 net
                 <>
@@ -678,12 +679,26 @@ function BuySideMatrix() {
                 const selCp = selectedCustomerId ? row.customerPrices.find((cp) => cp.customerId === selectedCustomerId) : null;
 
                 return (
-                  <TableRow key={row.skuId} className="hover:bg-muted/30">
-                    <TableCell className="sticky left-0 bg-background z-10 font-mono text-xs font-medium">{row.sku}</TableCell>
+                  <TableRow key={row.skuId} className={`hover:bg-muted/30 ${'isBlocked' in row && row.isBlocked ? 'opacity-60 bg-red-50/30 dark:bg-red-950/10' : ''}`}>
+                    <TableCell className="sticky left-0 bg-background z-10 font-mono text-xs font-medium">
+                      <div className="flex items-center gap-1">
+                        {row.sku}
+                        {'isBlocked' in row && row.isBlocked && (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">BLOCKED</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{row.description}</TableCell>
                     <TableCell className="text-xs">{row.productGroup ?? "—"}</TableCell>
                     <TableCell>{fob2027Badge(row.fob2027Status)}</TableCell>
                     <TableCell className="text-right text-sm font-mono">{fmt(row.costBasis)}</TableCell>
+                    <TableCell className="text-right text-sm font-mono">
+                      {'costDelta' in row && row.costDelta !== null && row.costDelta !== undefined ? (
+                        <span className={row.costDelta > 0 ? 'text-red-600 dark:text-red-400' : row.costDelta < 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
+                          {row.costDelta > 0 ? '+' : ''}{(row.costDelta * 100).toFixed(1)}%
+                        </span>
+                      ) : '—'}
+                    </TableCell>
                     {!selectedCustomerId ? (
                       <>
                         {(viewMode === "import" || viewMode === "both") && <TableCell className="text-right text-sm font-mono bg-blue-50/50 dark:bg-blue-950/20">{fmt(row.importList)}</TableCell>}

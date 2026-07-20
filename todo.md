@@ -278,3 +278,21 @@
 - [x] SKUTable: renamed FOB 26 Costing → 2026 FOB Cost, BD License Fee % → B&D Royalty %, Asia Margin % → Supplier Margin %, Inc 24-25% → Price Increase 24→25
 - [x] Snapshots: implement restore procedure on backend + wire UI with Restore + Delete buttons per snapshot
 - [x] Customer CSV import: paste CSV (Name, Tier, 2025-26 Sales) with live preview, append or replace mode
+
+## Phase 15 — Ian's Confirmed Logic Fixes
+
+- [x] Fix royalty category table: Heat Pumps/Ladders/Ladders & Steps → Cat 4 (4.0%); Robotic Cleaners → 0%; Cat 3 (7.0%) = Brushes, Cover Pumps, Skimmers & Rakes — CONFIRMED already correct in tool
+- [x] Add brand gate to royalty formula: royalty = 0 for all non-B&D SKUs regardless of category — CONFIRMED already correct in tool
+- [x] Fix unit cubic feet formula: add ÷ pcs_per_carton divisor to freight allocation — CONFIRMED already correct in tool
+- [x] Verified 49 tests passing, 0 TypeScript errors — no code changes needed
+
+## Phase 16 — Confirmed Fixes from Dan & Ian
+
+- [x] Backend: 34 unmapped B&D SKUs (Parts & Replacement, Uncategorized) confirmed 0% royalty per Dan — explicit comment in code
+- [x] Backend: PNL comparison changed to cost-vs-cost (2027 landed cost vs 2026 avg FOB cost) per Dan
+- [x] Backend: BLOCKED state added — SKUs with no cost basis return isBlocked=true, never zero
+- [x] Backend: Section 122 toggle added to freight_config (sec122_enabled key)
+- [x] Frontend: "vs 2026 Cost" column added to Buy Side Matrix with tooltip explaining cost-vs-cost logic
+- [x] Frontend: BLOCKED badge (red) on SKUs with missing cost in Buy Side Matrix, row dimmed
+- [x] Frontend: Section 122 amber toggle card in Freight Config tab with enable/disable button and expiry note
+- [x] 49 tests passing, 0 TypeScript errors

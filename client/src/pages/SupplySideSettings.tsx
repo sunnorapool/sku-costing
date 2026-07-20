@@ -95,6 +95,36 @@ function FreightConfigTab() {
         </div>
       </div>
 
+      {/* Section 122 Toggle */}
+      <div className="rounded-lg border p-4 bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">Section 122 Tariff</span>
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                {(config ?? []).find(r => r.key === "sec122_enabled")?.value === "0" ? "DISABLED" : "ACTIVE"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-lg">
+              Section 122 is a temporary presidential tariff authority (10% on all imports). Per Ian: expires approx. July 24, 2026 unless Congress extends. Toggle off once it lapses to remove it from all landed cost calculations.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 h-8 text-xs"
+            onClick={() => {
+              const current = (config ?? []).find(r => r.key === "sec122_enabled");
+              const newVal = current?.value === "0" ? "1" : "0";
+              upsert.mutate({ key: "sec122_enabled", value: newVal });
+            }}
+            disabled={upsert.isPending}
+          >
+            {(config ?? []).find(r => r.key === "sec122_enabled")?.value === "0" ? "Enable Section 122" : "Disable Section 122"}
+          </Button>
+        </div>
+      </div>
+
       <div className="rounded-lg border overflow-auto">
         <table className="w-full text-xs">
           <thead>
