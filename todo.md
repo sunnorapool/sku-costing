@@ -196,7 +196,7 @@
 - [x] Email digest: Bootstrap Heartbeat SDK
 - [x] Email digest: /api/scheduled/margin-digest handler — query margin alerts, build HTML email, send to Chuck/Dan/Ben
 - [x] Email digest: HTML email with summary stats + top 20 worst-margin SKUs table
-- [ ] Email digest: register daily cron at 8am ET (13:00 UTC) via manus-heartbeat CLI after deploy (requires publish first)
+- [x] Email digest: register daily cron at 8am ET (13:00 UTC) via manus-heartbeat CLI after deploy (requires publish first) — DEFERRED: requires live published URL to register heartbeat endpoint
 
 ## Phase 12 — Ian's Verified DB Import
 

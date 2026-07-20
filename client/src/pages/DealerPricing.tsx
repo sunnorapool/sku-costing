@@ -83,15 +83,19 @@ function AssumptionsTab() {
     if (c.key && c.value) configMap[c.key] = c.value;
   }
 
+  const isSetUp = !!globalRule && (data?.tiers?.length ?? 0) > 0;
+
   return (
     <div className="space-y-6">
-      {/* Placeholder warning */}
-      <div className="flex items-start gap-3 rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-950 p-4">
-        <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
-        <div className="text-sm text-yellow-800 dark:text-yellow-200">
-          <strong>Placeholder values active.</strong> Global margins (Import 20%, Domestic 35%) and tier discounts (L1 15%, L2 10%, L3 5%) are from Dan's working spreadsheet and are marked as placeholders. Set final values before generating price sheets.
+      {/* Setup guidance — shown when nothing is configured yet */}
+      {!isSetUp && (
+        <div className="flex items-start gap-3 rounded-lg border border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950 p-4">
+          <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+          <div className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Setup required.</strong> Set your global import and domestic margins below, then add tier discounts for L1, L2, and L3. The matrix will calculate list and net prices once these are in place.
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pricing Config */}
       <Card>
@@ -139,22 +143,22 @@ function AssumptionsTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Global Margins</CardTitle>
-            <Button size="sm" variant="outline" onClick={() => setEditingMargin({ id: globalRule?.id, scope: "global", scopeValue: "", importPct: globalRule?.importMarginPct ? (parseFloat(globalRule.importMarginPct) * 100).toFixed(1) : "20.0", domesticPct: globalRule?.domesticMarginPct ? (parseFloat(globalRule.domesticMarginPct) * 100).toFixed(1) : "35.0", notes: globalRule?.notes ?? "" })}>
-              Edit
+            <Button size="sm" variant="outline" onClick={() => setEditingMargin({ id: globalRule?.id, scope: "global", scopeValue: "", importPct: globalRule?.importMarginPct ? (parseFloat(globalRule.importMarginPct) * 100).toFixed(1) : "", domesticPct: globalRule?.domesticMarginPct ? (parseFloat(globalRule.domesticMarginPct) * 100).toFixed(1) : "", notes: globalRule?.notes ?? "" })}>
+              {globalRule ? "Edit" : "Set Margins"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-lg bg-muted/50 p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {globalRule?.importMarginPct ? fmtPct(parseFloat(globalRule.importMarginPct)) : "20.0%"}
+              <div className={`text-2xl font-bold ${globalRule?.importMarginPct ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}>
+                {globalRule?.importMarginPct ? fmtPct(parseFloat(globalRule.importMarginPct)) : "Not set"}
               </div>
               <div className="text-xs text-muted-foreground mt-1">Import Margin</div>
             </div>
             <div className="rounded-lg bg-muted/50 p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {globalRule?.domesticMarginPct ? fmtPct(parseFloat(globalRule.domesticMarginPct)) : "35.0%"}
+              <div className={`text-2xl font-bold ${globalRule?.domesticMarginPct ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground'}`}>
+                {globalRule?.domesticMarginPct ? fmtPct(parseFloat(globalRule.domesticMarginPct)) : "Not set"}
               </div>
               <div className="text-xs text-muted-foreground mt-1">Domestic Margin</div>
             </div>
@@ -167,13 +171,18 @@ function AssumptionsTab() {
         <CardHeader><CardTitle className="text-base">Tier Discounts (Discount off List)</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
-            {(data?.tiers ?? []).map((t) => (
-              <div key={t.tier} className="rounded-lg border p-4 text-center cursor-pointer hover:border-primary transition-colors" onClick={() => setEditingTier({ tier: t.tier, pct: (parseFloat(t.discountPct) * 100).toFixed(1) })}>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Level {t.tier}</div>
-                <div className="text-2xl font-bold">{fmtPct(parseFloat(t.discountPct))}</div>
-                <div className="text-xs text-muted-foreground mt-1">off list</div>
-              </div>
-            ))}
+            {[1, 2, 3].map((tier) => {
+              const t = (data?.tiers ?? []).find((x) => x.tier === tier);
+              return (
+                <div key={tier} className="rounded-lg border p-4 text-center cursor-pointer hover:border-primary transition-colors" onClick={() => setEditingTier({ tier, pct: t ? (parseFloat(t.discountPct) * 100).toFixed(1) : "" })}>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Level {tier}</div>
+                  <div className={`text-2xl font-bold ${t ? '' : 'text-muted-foreground'}`}>
+                    {t ? fmtPct(parseFloat(t.discountPct)) : "Not set"}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{t ? "off list" : "click to set"}</div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
