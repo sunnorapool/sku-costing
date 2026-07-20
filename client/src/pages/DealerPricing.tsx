@@ -369,9 +369,93 @@ function AssumptionsTab() {
 
 // ─── Customers Tab ────────────────────────────────────────────────────────────
 
+function CustomerSalesDialog({ customerId, customerName, onClose }: { customerId: number; customerName: string; onClose: () => void }) {
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const { data, isLoading } = trpc.dealerPricing.getCustomerSkuSales.useQuery(
+    { customerId, search, limit: 200, offset: 0 },
+    { enabled: true }
+  );
+  const { data: summary } = trpc.dealerPricing.getCustomerSalesSummary.useQuery({ customerId });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{customerName} — Sales History (2025–26)</DialogTitle>
+        </DialogHeader>
+        {summary && (
+          <div className="grid grid-cols-3 gap-3 mb-2">
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-xl font-bold">{Number(summary.totalSkus).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">SKUs Purchased</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-xl font-bold">${Number(summary.totalSales ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+              <div className="text-xs text-muted-foreground">Total Sales</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-xl font-bold">${Number(summary.avgRealizedPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div className="text-xs text-muted-foreground">Avg Realized Price</div>
+            </div>
+          </div>
+        )}
+        <div className="flex gap-2 mb-2">
+          <Input
+            placeholder="Search SKU or description..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && setSearch(searchInput)}
+            className="max-w-xs"
+          />
+          <Button size="sm" variant="outline" onClick={() => setSearch(searchInput)}>Search</Button>
+          {search && <Button size="sm" variant="ghost" onClick={() => { setSearch(""); setSearchInput(""); }}>Clear</Button>}
+        </div>
+        <div className="flex-1 overflow-auto rounded-lg border">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading sales history...
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Total Sales</TableHead>
+                  <TableHead className="text-right">Avg Price</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(data?.rows ?? []).map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-mono text-xs">{r.skuCode}</TableCell>
+                    <TableCell className="text-sm max-w-[260px] truncate">{r.description ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{r.productGroup ?? '—'}</TableCell>
+                    <TableCell className="text-right text-sm">{Number(r.totalQty ?? 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-sm">${Number(r.totalSalesAmt ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                    <TableCell className="text-right text-sm">${Number(r.avgRealizedPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  </TableRow>
+                ))}
+                {(data?.rows ?? []).length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No sales data found</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+        {data && <div className="text-xs text-muted-foreground pt-1">Showing {data.rows.length} of {data.total} SKUs · Source: QuickBooks export via Chuck SQL Transfer 2026-07-17</div>}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CustomersTab() {
   const { data: customers, isLoading, refetch } = trpc.dealerPricing.getCustomers.useQuery();
   const upsert = trpc.dealerPricing.upsertCustomer.useMutation({ onSuccess: () => refetch() });
+  const [salesCustomer, setSalesCustomer] = useState<{ id: number; name: string } | null>(null);
   const importCustomers = trpc.dealerPricing.importCustomers.useMutation({
     onSuccess: (r) => {
       toast.success(`Imported ${r.inserted} customers${r.skipped > 0 ? `, skipped ${r.skipped} duplicates` : ""}`);
@@ -527,7 +611,8 @@ function CustomersTab() {
                 <TableCell>
                   {c.active ? <Badge variant="outline" className="text-xs text-green-600">Active</Badge> : <Badge variant="outline" className="text-xs text-muted-foreground">Inactive</Badge>}
                 </TableCell>
-                <TableCell>
+                <TableCell className="flex gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => setSalesCustomer({ id: c.id, name: c.name })}>Sales History</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditing({ id: c.id, name: c.name, tier: c.tier, notes: c.notes ?? "" })}>Edit</Button>
                 </TableCell>
               </TableRow>
@@ -571,6 +656,14 @@ function CustomersTab() {
           )}
         </DialogContent>
       </Dialog>
+
+      {salesCustomer && (
+        <CustomerSalesDialog
+          customerId={salesCustomer.id}
+          customerName={salesCustomer.name}
+          onClose={() => setSalesCustomer(null)}
+        />
+      )}
     </div>
   );
 }

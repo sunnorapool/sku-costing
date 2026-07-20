@@ -466,3 +466,23 @@ export const marketPrices = mysqlTable("market_prices", {
 
 export type MarketPrice = typeof marketPrices.$inferSelect;
 export type InsertMarketPrice = typeof marketPrices.$inferInsert;
+
+// ─── Customer SKU Sales History (from Chuck SQLite, 2026-07-17) ───────────────
+// Per-customer, per-SKU sales data from the QuickBooks export.
+// Used to build customer tabs and verify realized prices (Criticals #1-4).
+export const customerSkuSales = mysqlTable("customer_sku_sales", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customer_id").notNull(),
+  skuId: int("sku_id").notNull(),
+  skuCode: varchar("sku_code", { length: 64 }).notNull(), // denormalized for fast reads
+  totalQty: decimal("total_qty", { precision: 14, scale: 2 }),
+  totalSalesAmt: decimal("total_sales_amt", { precision: 14, scale: 2 }), // in dollars
+  avgRealizedPrice: decimal("avg_realized_price", { precision: 10, scale: 4 }), // total_sales_amt / total_qty
+  periodLabel: varchar("period_label", { length: 64 }), // e.g. '2025-26', 'FY2025'
+  sourceDb: varchar("source_db", { length: 128 }).default("chuck_sqlite_2026-07-17"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomerSkuSale = typeof customerSkuSales.$inferSelect;
+export type InsertCustomerSkuSale = typeof customerSkuSales.$inferInsert;

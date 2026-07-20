@@ -1016,4 +1016,71 @@ export const dealerPricingRouter = router({
       }
       return { success: true, inserted, skipped };
     }),
+
+  // ── Customer SKU Sales History (from Chuck SQLite) ─────────────────────────
+
+  getCustomerSkuSales: publicProcedure
+    .input(
+      z.object({
+        customerId: z.number(),
+        search: z.string().optional(),
+        limit: z.number().int().min(1).max(500).default(200),
+        offset: z.number().int().min(0).default(0),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('DB unavailable');
+      const { customerSkuSales, skus } = await import('../../drizzle/schema').then(m => m);
+      const conditions = [eq(customerSkuSales.customerId, input.customerId)];
+      if (input.search) {
+        conditions.push(
+          or(
+            like(customerSkuSales.skuCode, `%${input.search}%`),
+            like(skus.description, `%${input.search}%`)
+          )!
+        );
+      }
+      const rows = await db
+        .select({
+          id: customerSkuSales.id,
+          skuCode: customerSkuSales.skuCode,
+          description: skus.description,
+          productGroup: skus.productGroup,
+          totalQty: customerSkuSales.totalQty,
+          totalSalesAmt: customerSkuSales.totalSalesAmt,
+          avgRealizedPrice: customerSkuSales.avgRealizedPrice,
+          periodLabel: customerSkuSales.periodLabel,
+        })
+        .from(customerSkuSales)
+        .leftJoin(skus, eq(customerSkuSales.skuId, skus.id))
+        .where(and(...conditions))
+        .orderBy(desc(customerSkuSales.totalSalesAmt))
+        .limit(input.limit)
+        .offset(input.offset);
+      const [{ count }] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(customerSkuSales)
+        .where(and(...conditions));
+      return { rows, total: Number(count) };
+    }),
+
+  getCustomerSalesSummary: publicProcedure
+    .input(z.object({ customerId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('DB unavailable');
+      const { customerSkuSales } = await import('../../drizzle/schema').then(m => m);
+      const [summary] = await db
+        .select({
+          totalSkus: sql<number>`COUNT(DISTINCT ${customerSkuSales.skuCode})`,
+          totalQty: sql<number>`SUM(${customerSkuSales.totalQty})`,
+          totalSales: sql<number>`SUM(${customerSkuSales.totalSalesAmt})`,
+          avgRealizedPrice: sql<number>`AVG(${customerSkuSales.avgRealizedPrice})`,
+        })
+        .from(customerSkuSales)
+        .where(eq(customerSkuSales.customerId, input.customerId));
+      return summary;
+    }),
+
 });

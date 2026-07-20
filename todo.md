@@ -333,3 +333,14 @@
 - [x] Verify kept-margin display formula for royalty-bearing SKUs (~0.6 pt overstatement) — Finding #22 (formula correct; royalty in denominator means no overstatement)
 - [x] Rename PNL column labels to "Gross Margin at 2027 Landed Cost" per Ian — Finding #26
 - [x] 72 tests passing, 0 TypeScript errors
+
+## Phase 19 — SQLite Full Sync (July 20, 2026)
+
+- [x] Sync HTS codes from SQLite (1,605 already correct; 6 new SKUs added with confirmed FOB quotes)
+- [x] Sync carton dims from SQLite (1,183 already correct; 9 additional parts SKUs updated)
+- [x] Sync 73 customer records from SQLite sales data (tier assigned by sales volume: T1 ≥$10M, T2 ≥$500K, T3 <$500K)
+- [x] Sync 4,486 customer+SKU sales rows into customer_sku_sales table (42 skipped — SKUs not in tool)
+- [x] Sync historical avg price paid from item_reported_sales_snapshots (2,146 SKUs updated) — fixes Finding #2
+- [x] Customer Sales History drill-down dialog added to Customers tab (click Sales History on any customer)
+- [x] getCustomerSkuSales + getCustomerSalesSummary tRPC procedures added
+- [x] 72 tests passing, 0 TypeScript errors
