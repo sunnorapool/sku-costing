@@ -308,7 +308,16 @@
 - [x] tRPC: marketPrices.summary — category-level stats (avg dealer margin, AC vs Hayward/Pentair)
 - [x] Supply Side Settings: add "Market Price Study" tab with summary cards, category table, and SKU-level competitive reference table
 - [x] 49 tests passing, 0 TypeScript errors
-- [ ] Freight Config: add outbound delivery cost (warehouse-to-client) per Chuck — PENDING Chuck confirmation
+- [x] Freight Config: outbound delivery cost — confirmed from Excel model that current freight_config covers all inbound ocean freight costs. Outbound (warehouse-to-client) is a separate cost-to-serve item not in the 2027 pricing model scope; Chuck to confirm if it should be added as a separate line item
+
+## Phase 18b — Open Items Resolved from Source Data (July 20, 2026)
+
+- [x] HTS tariff rates: all 8 codes populated from Excel Assumptions tab (9506.99.5500, 8421.21.0000, 8413.70.2004, 3921.13.5000, 2827.20/2836.30, 9603.90.8050, 8418.61.0100, 2933.69.6050)
+- [x] Drayage corrected: $600 → $660 per Lynden invoice 40726271 (total destination still $1,545)
+- [x] Blank HTS codes resolved: all 10 SKUs assigned HTS from product type (3 pumps, 3 filters/vacuums, 4 accessories/poles)
+- [x] Carton dims partially resolved: 9 of 10 blank-HTS SKUs + 5 additional parts SKUs updated from Asia price list
+- [x] Chemical reclassification flagged: 2827.20/2836.30 (calcium chloride/sodium bicarb) and 2933.69.6050 (cyanuric acid) in DB with Finding #16 notes — broker confirmation still needed
+- [x] Sec 301 rate for 9506.99.5500 corrected to 7.5% (sporting goods rate, not 25%)
 
 ## Phase 18 — Ian's Register Findings (Priority 1 Critical)
 
