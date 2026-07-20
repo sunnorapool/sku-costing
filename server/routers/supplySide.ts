@@ -591,4 +591,62 @@ export const supplySideRouter = router({
       await db.delete(priceSnapshots).where(eq(priceSnapshots.id, input.id));
       return { success: true };
     }),
+
+  "snapshots.restore": publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const rows = await db.select().from(priceSnapshots).where(eq(priceSnapshots.id, input.id));
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Snapshot not found" });
+      const snap = rows[0];
+      const data = JSON.parse(snap.snapshotData);
+      const { skus, skuPricing, dealerMarginRules, tierDiscounts } = await import("../../drizzle/schema");
+
+      if (snap.scope === "supply" && data.rows) {
+        // Restore supply-side: update each SKU's cost fields from snapshot
+        for (const row of data.rows as Array<{
+          id: number;
+          fob2027Price: string | null;
+          fob2027Status: string | null;
+          landedCost: string | null;
+          factoryCost: string | null;
+          fob26Costing: string | null;
+          tariffPct: string | null;
+          dutyPct: string | null;
+          freight: string | null;
+          bdLicenseFeePct: string | null;
+        }>) {
+          // Restore SKU-level fields
+          await db.update(skus).set({
+            fob2027Price: row.fob2027Price,
+            fob2027Status: (row.fob2027Status as "confirmed" | "placeholder" | "missing" | null),
+          }).where(eq(skus.id, row.id));
+          // Restore pricing fields
+          await db.update(skuPricing).set({
+            landedCost: row.landedCost,
+            factoryCost: row.factoryCost,
+            fob26Costing: row.fob26Costing,
+            tariffPct: row.tariffPct,
+            dutyPct: row.dutyPct,
+            freight: row.freight,
+            bdLicenseFeePct: row.bdLicenseFeePct,
+          }).where(eq(skuPricing.skuId, row.id));
+        }
+        return { success: true, restoredCount: data.rows.length, scope: "supply" };
+      } else if (snap.scope === "buy" && data.marginRules) {
+        // Restore buy-side: replace all margin rules and tier discounts
+        await db.delete(dealerMarginRules);
+        if (data.marginRules.length > 0) {
+          await db.insert(dealerMarginRules).values(data.marginRules);
+        }
+        await db.delete(tierDiscounts);
+        if (data.tierDiscounts && data.tierDiscounts.length > 0) {
+          await db.insert(tierDiscounts).values(data.tierDiscounts);
+        }
+        return { success: true, restoredCount: data.marginRules.length, scope: "buy" };
+      }
+
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Snapshot data format not recognized" });
+    }),
 });

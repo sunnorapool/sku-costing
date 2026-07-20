@@ -249,28 +249,32 @@
 ## Phase 14 — Dan's Feature Requests + Full UI Pass
 
 ### DB Schema
-- [ ] DB: `hts_tariff_rates` table (hts_code, description, base_duty_pct, sec301_pct, sec232_pct, sec122_pct, source_url)
-- [ ] DB: `freight_config` table (key, value, label, formula_note, source_note)
-- [ ] DB: `price_snapshots` table (id, label, scope, snapshot_data JSON, created_at)
-- [ ] Run migration
+- [x] DB: `hts_tariff_rates` table (hts_code, description, base_duty_pct, sec301_pct, sec232_pct, sec122_pct, source_url)
+- [x] DB: `freight_config` table (key, value, label, formula_note, source_note)
+- [x] DB: `price_snapshots` table (id, label, scope, snapshot_data JSON, created_at)
+- [x] Run migration
 
 ### Backend
-- [ ] tRPC: hts.list / hts.upsert / hts.delete
-- [ ] tRPC: freightConfig.get / freightConfig.update
-- [ ] tRPC: landedCost.compute — full breakdown for a SKU
-- [ ] tRPC: customerHistory.get — per-customer PNL analysis
-- [ ] tRPC: snapshots.save / snapshots.list / snapshots.restore
+- [x] tRPC: hts.list / hts.upsert / hts.delete
+- [x] tRPC: freightConfig.get / freightConfig.update
+- [x] tRPC: landedCost.compute — full breakdown for a SKU
+- [x] tRPC: customerHistory.get — per-customer PNL analysis
+- [x] tRPC: snapshots.save / snapshots.list / snapshots.restore
 
 ### UI Pass — Nomenclature & Layout
-- [ ] SKUDetail: rename "FOB 26 Costing" → "2026 FOB Cost", "Factory Cost" → "Factory/FOB Cost", "Tariff %" → "Import Tariff Rate", "Duty %" → "Base Duty Rate", "Load %" → "Origin Load %", "BD License Fee %" → "B&D Royalty %", "Asia Margin %" → "Supplier Margin %", "Inc 24→25 %" → "Price Increase 2024→2025"
-- [ ] SKUDetail: consolidate all cost components into one "Import Cost Breakdown" card with formula tooltips
-- [ ] SKUDetail: add HoverCard tooltip to every cost row label (formula + source)
-- [ ] DealerPricing: rename "Imp Net L1/L2/L3" → "Import Net Tier 1/2/3", "Dom Net" → "Domestic Net", "Imp Kept Mgn" → "Import Kept Margin"
-- [ ] SKUTable: rename fob2027 column headers to plain English
+- [x] SKUDetail: rename "FOB 26 Costing" → "2026 FOB Cost", "Factory Cost" → "Factory/FOB Cost", "Tariff %" → "Import Tariff Rate", "Duty %" → "Base Duty Rate", "Load %" → "Origin Load %", "BD License Fee %" → "B&D Royalty %", "Asia Margin %" → "Supplier Margin %", "Inc 24→25 %" → "Price Increase 2024→2025"
+- [x] SKUDetail: consolidate all cost components into one "Import Cost Breakdown" card with formula tooltips
+- [x] SKUDetail: add HoverCard tooltip to every cost row label (formula + source)
+- [x] DealerPricing: rename "Imp Net L1/L2/L3" → "Import Net Tier 1/2/3", "Dom Net" → "Domestic Net", "Imp Kept Mgn" → "Import Kept Margin"
+- [x] SKUTable: rename fob2027 column headers to plain English
 
 ### New Feature Pages/Tabs
-- [ ] New page: /hts-codes — HTS tariff rate table, editable, with source link column
-- [ ] New panel in Dealer Pricing: Freight & Import Config — all freight rate inputs in one place with formula tooltips
-- [ ] New tab in Dealer Pricing: Customer History — per-customer PNL analysis
-- [ ] New tab in Dealer Pricing: Snapshots — save/restore supply or buy side data snapshots
-- [ ] SKUTable: case-pack sanity flag — orange badge when per-unit import net looks like a case-pack price
+- [x] New page: /supply-side — Supply Side Settings with HTS Codes, Freight Config, Customer PNL, Snapshots tabs
+- [x] New panel: Freight & Import Config — all freight rate inputs in one place with formula tooltips
+- [x] New tab: Customer History — per-customer PNL analysis
+- [x] New tab: Snapshots — save/delete supply or buy side data snapshots
+- [x] SKUTable: case-pack sanity flag — orange ⚠ CASE? badge when per-unit FOB < $5 and pcs/carton > 4, or case-pack total > $500
+- [x] DealerPricing: renamed all abbreviated column headers to plain English (Import Net — Tier 1/2/3, Domestic Net, Domestic List, Domestic Margin, 2027 FOB Status)
+- [x] SKUTable: renamed FOB 26 Costing → 2026 FOB Cost, BD License Fee % → B&D Royalty %, Asia Margin % → Supplier Margin %, Inc 24-25% → Price Increase 24→25
+- [x] Snapshots: implement restore procedure on backend + wire UI with Restore + Delete buttons per snapshot
+- [x] Customer CSV import: paste CSV (Name, Tier, 2025-26 Sales) with live preview, append or replace mode

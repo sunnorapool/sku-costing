@@ -946,4 +946,49 @@ export const dealerPricingRouter = router({
         rows,
       };
     }),
+
+  importCustomers: publicProcedure
+    .input(
+      z.object({
+        rows: z.array(
+          z.object({
+            name: z.string().min(1),
+            tier: z.number().int().min(1).max(3),
+            sales2025_26: z.number().nullable().optional(),
+            notes: z.string().nullable().optional(),
+          })
+        ),
+        mode: z.enum(["append", "replace"]).default("append"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('DB unavailable');
+      if (input.mode === "replace") {
+        await db.delete(customers);
+      }
+      let inserted = 0;
+      let skipped = 0;
+      for (const row of input.rows) {
+        // Skip if name already exists (case-insensitive) in append mode
+        if (input.mode === "append") {
+          const existing = await db
+            .select({ id: customers.id })
+            .from(customers)
+            .where(sql`LOWER(${customers.name}) = LOWER(${row.name})`)
+            .limit(1);
+          if (existing.length > 0) { skipped++; continue; }
+        }
+        await db.insert(customers).values({
+          name: row.name,
+          tier: row.tier,
+          sales2025_26: row.sales2025_26?.toString() ?? null,
+          notes: row.notes ?? null,
+          importDepositException: 0,
+          active: 1,
+        });
+        inserted++;
+      }
+      return { success: true, inserted, skipped };
+    }),
 });

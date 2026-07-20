@@ -415,9 +415,16 @@ function SnapshotsTab() {
     },
     onError: (e) => toast.error(e.message),
   });
-  const restore = trpc.supplySide["snapshots.delete"].useMutation({
+  const deleteSnap = trpc.supplySide["snapshots.delete"].useMutation({
     onSuccess: () => {
       toast.success("Snapshot deleted");
+      utils.supplySide["snapshots.list"].invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const restoreSnap = trpc.supplySide["snapshots.restore"].useMutation({
+    onSuccess: (result) => {
+      toast.success(`Restored ${result.restoredCount} ${result.scope === "supply" ? "SKU cost records" : "pricing rules"} from snapshot`);
       utils.supplySide["snapshots.list"].invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -486,19 +493,35 @@ function SnapshotsTab() {
                     {snap.createdAt ? new Date(snap.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                   </td>
                   <td className="px-4 py-2.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 text-[11px] px-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                      onClick={() => {
-                        if (confirm(`Delete snapshot "${snap.label}"?`)) {
-                          restore.mutate({ id: snap.id });
-                        }
-                      }}
-                      disabled={restore.isPending}
-                    >
-                      <Trash2 className="h-2.5 w-2.5 mr-1" />Delete
-                    </Button>
+                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[11px] px-2 text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50"
+                        onClick={() => {
+                          if (confirm(`Restore snapshot "${snap.label}"?\n\nThis will overwrite current ${snap.scope === "supply" ? "SKU cost data" : "dealer pricing assumptions"} with the saved values. This cannot be undone.`)) {
+                            restoreSnap.mutate({ id: snap.id });
+                          }
+                        }}
+                        disabled={restoreSnap.isPending || deleteSnap.isPending}
+                      >
+                        {restoreSnap.isPending ? <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" /> : null}
+                        Restore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[11px] px-2 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          if (confirm(`Delete snapshot "${snap.label}"?`)) {
+                            deleteSnap.mutate({ id: snap.id });
+                          }
+                        }}
+                        disabled={deleteSnap.isPending || restoreSnap.isPending}
+                      >
+                        <Trash2 className="h-2.5 w-2.5 mr-1" />Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

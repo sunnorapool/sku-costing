@@ -147,12 +147,26 @@ const FIELD_LABELS: Record<string, string> = {
   srp2023: "SRP 2023", srp2024: "SRP 2024", map: "MAP",
   comps2024: "2024 Comps", srp2024Amzn: "SRP 2024 (AMZN)",
   wholesalePoolCity: "Wholesale (Pool City)", bdWholesaleMarginPct: "BD Wholesale Margin %",
-  fob26Costing: "FOB 26 Costing", factoryCost: "Factory Cost",
+  fob26Costing: "2026 FOB Cost", factoryCost: "Factory Cost",
   pptg25WholesalePrice: "PPTG 25 Wholesale", bdWholesaleRetail24: "BD Wholesale Retail 24",
   bdWholesaleRetail25: "BD Wholesale Retail 25", adjusted: "Adjusted",
   inc2425Pct: "Inc 24-25%", bdMargin: "BD Margin", bdMarginPct: "BD Margin %",
   landedCost: "Landed Cost", landedPlusBdFees: "Landed + BD Fees", margin: "Margin",
 };
+
+// ─── Case-Pack Sanity Flag ───────────────────────────────────────────────────
+// Flags when a per-unit FOB cost looks suspiciously low relative to the case-pack
+// quantity — e.g., $2.29 for a magnetic pole that ships 12/carton means the cost
+// is almost certainly the case-pack price, not the per-unit price.
+function isCasePackSuspect(fob: string | null | undefined, pcsPerCarton: string | null | undefined): boolean {
+  const fobVal = fob ? parseFloat(fob) : null;
+  const pcs = pcsPerCarton ? parseInt(pcsPerCarton, 10) : null;
+  if (!fobVal || !pcs || pcs <= 1) return false;
+  // Flag if: FOB per unit < $5 AND pcs/carton > 4 (likely a case-pack price entered as unit price)
+  // Also flag if: FOB × pcs/carton > $500 (the case-pack total is implausibly high for a single unit)
+  const casePackTotal = fobVal * pcs;
+  return (fobVal < 5 && pcs > 4) || casePackTotal > 500;
+}
 
 // ─── Skeleton Loader ──────────────────────────────────────────────────────────
 function TableSkeleton() {
@@ -728,13 +742,13 @@ export default function SKUTable() {
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-blue-50/60">Wholesale (Pool City)</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-blue-50/60">BD Wholesale Margin %</th>
                 {/* Costs */}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[105px] bg-amber-50/60">FOB 26 Costing</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[105px] bg-amber-50/60">2026 FOB Cost</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[95px] bg-amber-50/60">Factory Cost</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-amber-50/60">PPTG 25 Wholesale</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[140px] bg-amber-50/60">BD Retail 24</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[140px] bg-amber-50/60">BD Retail 25</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60">Adjusted</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60">Inc 24-25%</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60">Price Increase 24→25</th>
                 {/* Margins */}
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[95px] bg-emerald-50/60">BD Margin</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[95px] bg-emerald-50/60">BD Margin %</th>
@@ -750,8 +764,8 @@ export default function SKUTable() {
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[85px] bg-purple-50/60">Freight</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-purple-50/60">Freight Alt</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60">Load %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[115px] bg-purple-50/60">BD License Fee %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[100px] bg-purple-50/60">Asia Margin %</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[115px] bg-purple-50/60">B&D Royalty %</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[100px] bg-purple-50/60">Supplier Margin %</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60">BD Fee</th>
                 {/* Notes */}
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-l min-w-[180px] bg-slate-50">Notes</th>
@@ -780,6 +794,14 @@ export default function SKUTable() {
                     >
                       {row.sku.sku}
                     </button>
+                    {isCasePackSuspect(row.pricing?.fob26Costing, row.sku.pcsPerCarton) && (
+                      <span
+                        title={`Case-pack price check: 2026 FOB $${row.pricing?.fob26Costing} × ${row.sku.pcsPerCarton} pcs/carton — verify this is a per-unit cost, not a case-pack total`}
+                        className="ml-1 inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 border border-orange-300 cursor-help"
+                      >
+                        ⚠ CASE?
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 border-r text-xs max-w-[260px]">
                     <span className="block truncate" title={row.sku.description ?? ""}>{row.sku.description ?? "—"}</span>

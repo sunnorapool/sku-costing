@@ -34,7 +34,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, Unlock, Settings, Users, DollarSign, AlertTriangle, Download, RefreshCw } from "lucide-react";
+import { Loader2, Lock, Unlock, Settings, Users, DollarSign, AlertTriangle, Download, RefreshCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -320,8 +320,35 @@ function AssumptionsTab() {
 function CustomersTab() {
   const { data: customers, isLoading, refetch } = trpc.dealerPricing.getCustomers.useQuery();
   const upsert = trpc.dealerPricing.upsertCustomer.useMutation({ onSuccess: () => refetch() });
+  const importCustomers = trpc.dealerPricing.importCustomers.useMutation({
+    onSuccess: (r) => {
+      toast.success(`Imported ${r.inserted} customers${r.skipped > 0 ? `, skipped ${r.skipped} duplicates` : ""}`);
+      refetch();
+      setCsvDialogOpen(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const [editing, setEditing] = useState<{ id?: number; name: string; tier: number; notes: string } | null>(null);
   const [search, setSearch] = useState("");
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [csvMode, setCsvMode] = useState<"append" | "replace">("append");
+  const [csvPreview, setCsvPreview] = useState<Array<{ name: string; tier: number; sales2025_26: number | null }>>([]);
+
+  function parseCsv(text: string) {
+    const lines = text.trim().split("\n").filter(Boolean);
+    const parsed: Array<{ name: string; tier: number; sales2025_26: number | null }> = [];
+    for (const line of lines) {
+      const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+      if (cols.length < 2) continue;
+      const name = cols[0];
+      const tier = parseInt(cols[1], 10);
+      if (!name || isNaN(tier) || tier < 1 || tier > 3) continue;
+      const sales = cols[2] ? parseFloat(cols[2].replace(/[^0-9.]/g, "")) : null;
+      parsed.push({ name, tier, sales2025_26: isNaN(sales ?? NaN) ? null : sales });
+    }
+    return parsed;
+  }
 
   const filtered = useMemo(() => {
     if (!customers) return [];
@@ -351,7 +378,76 @@ function CustomersTab() {
       <div className="flex items-center gap-3">
         <Input placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
         <Button size="sm" variant="outline" onClick={() => setEditing({ name: "", tier: 3, notes: "" })}>+ Add Customer</Button>
+        <Button size="sm" variant="outline" onClick={() => { setCsvText(""); setCsvPreview([]); setCsvDialogOpen(true); }}>
+          <Upload className="h-3.5 w-3.5 mr-1" />Import CSV
+        </Button>
       </div>
+
+      {/* CSV Import Dialog */}
+      <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Import Customers from CSV</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-muted/50 border p-3 text-xs text-muted-foreground">
+              <strong>Format:</strong> One customer per line: <code>Name, Tier (1-3), 2025-26 Sales (optional)</code><br />
+              Example: <code>Island Recreational, 1, 485000</code>
+            </div>
+            <div>
+              <Label>Paste CSV data</Label>
+              <textarea
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm font-mono min-h-[160px] resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder={"Island Recreational, 1, 485000\nQualco, 1, 320000\nHansens, 3, 45000"}
+                value={csvText}
+                onChange={(e) => { setCsvText(e.target.value); setCsvPreview(parseCsv(e.target.value)); }}
+              />
+            </div>
+            {csvPreview.length > 0 && (
+              <div className="rounded-lg border overflow-auto max-h-48">
+                <table className="w-full text-xs">
+                  <thead><tr className="bg-muted/50 border-b">
+                    <th className="text-left px-3 py-2">Name</th>
+                    <th className="text-left px-3 py-2">Tier</th>
+                    <th className="text-right px-3 py-2">2025-26 Sales</th>
+                  </tr></thead>
+                  <tbody>
+                    {csvPreview.slice(0, 20).map((r, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="px-3 py-1.5">{r.name}</td>
+                        <td className="px-3 py-1.5">L{r.tier}</td>
+                        <td className="px-3 py-1.5 text-right">{r.sales2025_26 ? `$${r.sales2025_26.toLocaleString()}` : "—"}</td>
+                      </tr>
+                    ))}
+                    {csvPreview.length > 20 && <tr><td colSpan={3} className="px-3 py-1.5 text-muted-foreground text-center">+{csvPreview.length - 20} more rows</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              <Label className="text-sm">Import mode:</Label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="csvMode" value="append" checked={csvMode === "append"} onChange={() => setCsvMode("append")} />
+                  Append (skip duplicates)
+                </label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="csvMode" value="replace" checked={csvMode === "replace"} onChange={() => setCsvMode("replace")} />
+                  <span className="text-destructive font-medium">Replace all</span>
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setCsvDialogOpen(false)}>Cancel</Button>
+              <Button
+                disabled={csvPreview.length === 0 || importCustomers.isPending}
+                onClick={() => importCustomers.mutate({ rows: csvPreview, mode: csvMode })}
+              >
+                {importCustomers.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Import {csvPreview.length} Customers
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-lg border overflow-hidden">
         <Table>
@@ -532,19 +628,19 @@ function BuySideMatrix() {
               <TableHead className="sticky left-0 bg-background z-10 min-w-[100px]">SKU</TableHead>
               <TableHead className="min-w-[200px]">Description</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>FOB 2027</TableHead>
+              <TableHead>2027 FOB Status</TableHead>
               <TableHead className="text-right">Cost Basis</TableHead>
               {!selectedCustomerId ? (
                 // Overview: show list prices + L1/L2/L3 net
                 <>
                   {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import List</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Dom. List</TableHead>}
-                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">L1 Import Net</TableHead>}
-                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">L2 Import Net</TableHead>}
-                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">L3 Import Net</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">L1 Dom. Net</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">L2 Dom. Net</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">L3 Dom. Net</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic List</TableHead>}
+                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Net — Tier 1</TableHead>}
+                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Net — Tier 2</TableHead>}
+                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Net — Tier 3</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Net — Tier 1</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Net — Tier 2</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Net — Tier 3</TableHead>}
                 </>
               ) : (
                 // Single customer view
@@ -552,9 +648,9 @@ function BuySideMatrix() {
                   {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import List</TableHead>}
                   {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Net</TableHead>}
                   {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Margin</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Dom. List</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Dom. Net</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Dom. Margin</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic List</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Net</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Margin</TableHead>}
                 </>
               )}
             </TableRow>
