@@ -455,7 +455,7 @@ function SnapshotsTab() {
   });
   const restoreSnap = trpc.supplySide["snapshots.restore"].useMutation({
     onSuccess: (result) => {
-      toast.success(`Restored ${result.restoredCount} ${result.scope === "supply" ? "SKU cost records" : "pricing rules"} from snapshot`);
+      toast.success(`Snapshot "${result.label}" restored successfully`);
       utils.supplySide["snapshots.list"].invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -900,9 +900,10 @@ function CustomerPnlTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold">Customer PNL Analysis</h2>
+        <h2 className="text-sm font-semibold">Customer Gross Margin Analysis</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Compare prior season avg price paid vs. 2027 import/domestic net prices. Shows qty sold, revenue, and margin impact per SKU per customer.
+          Compare prior season avg price paid vs. 2027 import/domestic net prices. Shows qty sold, revenue, and gross margin at 2027 landed cost per SKU per customer.
+          Royalty is embedded in the pricing denominator (confirmed by Dan) — the kept margin shown is after royalty is priced in.
         </p>
       </div>
 
@@ -985,8 +986,8 @@ function CustomerPnlTab() {
                           <InfoTip text="Change from prior avg price paid to 2027 import net. Positive = price increase." />
                         </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
-                          2027 Kept Margin
-                          <InfoTip text="Margin % retained at the 2027 import net price. Formula: (Net − Landed Cost) ÷ Net." />
+                          Gross Margin at 2027 Landed Cost
+                          <InfoTip text="Gross margin % at the 2027 import net price. Formula: (Import Net − Landed Cost) ÷ Import Net. Royalty is embedded in the pricing denominator, so this margin is after royalty is priced in (Finding #21, #26)." />
                         </th>
                         <th className="text-left px-3 py-2 font-semibold text-muted-foreground">FOB Status</th>
                       </tr>

@@ -1,7 +1,21 @@
+/**
+ * Supply Side Router
+ *
+ * Phase 18 changes (Ian Allena findings register, July 20 2026):
+ *   - Finding #15: Section 232 stacking fix — 122 does NOT apply to the 232-covered portion.
+ *     Correct formula: tariff = (base+301+232) on FOB + 122 on (FOB - FOB×232).
+ *     Section 232 rate is 50% for steel/aluminum; 0% for pool equipment (no 232 exposure).
+ *   - Finding #17: Blank HTS codes → isHtsBlocked = true (same as missing cost).
+ *   - Finding #10: Weight-vs-cube freight mode — use whichever governs.
+ *   - Finding #14: Tariff scenario selector (current_law / base_2027 / stress).
+ *   - Finding #8:  Zero-dims hard-stop — isFreightBlocked = true when all dims are 0.
+ *   - Finding #19: MPF min/max caps ($33.58 min / $651.50 max per entry).
+ */
+
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { htsTariffRates, freightConfig, priceSnapshots } from "../../drizzle/schema";
+import { htsTariffRates, freightConfig, priceSnapshots, pricingConfig } from "../../drizzle/schema";
 import { eq, desc, asc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -68,8 +82,8 @@ const DEFAULT_FREIGHT_CONFIG = [
     value: "0.003464",
     label: "Merchandise Processing Fee (MPF)",
     unit: "% of FOB",
-    formulaNote: "FOB × 0.3464% = MPF $. Applied to all formal entries. Min $32.71, max $634.62 per entry (2024 rates).",
-    sourceNote: "US CBP regulatory rate. See 19 CFR 24.23.",
+    formulaNote: "FOB × 0.3464% = MPF $. Min $33.58, max $651.50 per entry (2025 CBP rates). Per-unit MPF = clamp(FOB × rate, min/units, max/units).",
+    sourceNote: "US CBP regulatory rate. See 19 CFR 24.23. Min/max updated per Ian Allena Finding #19.",
   },
 ];
 
@@ -83,7 +97,7 @@ const DEFAULT_HTS_CODES = [
     sec232Pct: "0",
     sec122Pct: "10",
     sourceUrl: "https://hts.usitc.gov/",
-    notes: "Chemicals category. Sec 301 List 3.",
+    notes: "Chemicals category. Sec 301 List 3. NOTE: Ian Finding #16 — 11 chemical SKUs may be misclassified; customs broker review required.",
   },
   {
     htsCode: "3921.13.5000",
@@ -146,6 +160,47 @@ const DEFAULT_HTS_CODES = [
     notes: "Pool brushes, leaf rakes, vacuum heads.",
   },
 ];
+
+// ─── Tariff stacking helper (Finding #15) ─────────────────────────────────────
+//
+// CORRECT stacking rule (per Ian Allena / CBP):
+//   Section 122 applies to the FOB value MINUS the portion already covered by Section 232.
+//   For pool equipment, sec232 = 0%, so the stacking simplification holds.
+//   For steel/aluminum products (sec232 > 0%):
+//     tariff = FOB × (base + 301 + 232) + FOB × (1 - 232) × 122
+//
+// Section 232 rate: 50% for steel/aluminum (per CBP proclamation 6/4/25).
+// Pool equipment HTS codes carry sec232 = 0%, so no change to current pool SKU math.
+// The formula is implemented correctly here for future steel/aluminum SKUs.
+//
+function computeTariffAmt(
+  fob: number,
+  baseDutyPct: number,   // as decimal (e.g. 0.053)
+  sec301Pct: number,     // as decimal
+  sec232Pct: number,     // as decimal (50% = 0.50 for steel; 0 for pool equipment)
+  sec122Pct: number,     // as decimal (10% = 0.10 when active)
+): { tariffAmt: number; dutyAmt: number; sec301Amt: number; sec232Amt: number; sec122Amt: number } {
+  const dutyAmt = fob * baseDutyPct;
+  const sec301Amt = fob * sec301Pct;
+  const sec232Amt = fob * sec232Pct;
+  // Section 122 applies only to the non-232-covered FOB portion (Finding #15)
+  const sec122Base = fob * (1 - sec232Pct);
+  const sec122Amt = sec122Base * sec122Pct;
+  const tariffAmt = sec301Amt + sec232Amt + sec122Amt;
+  return { tariffAmt, dutyAmt, sec301Amt, sec232Amt, sec122Amt };
+}
+
+// ─── Price rounding helper (Finding #30) ──────────────────────────────────────
+export function applyRounding(price: number, rule: string): number {
+  if (!price || price <= 0) return price;
+  switch (rule) {
+    case "cent":   return Math.round(price * 100) / 100;
+    case "nickel": return Math.round(price * 20) / 20;
+    case "dime":   return Math.round(price * 10) / 10;
+    case "dollar": return Math.round(price);
+    default:       return Math.round(price * 100) / 100; // always at least cent precision
+  }
+}
 
 export const supplySideRouter = router({
   // ─── HTS Tariff Rates ──────────────────────────────────────────────────────
@@ -263,7 +318,15 @@ export const supplySideRouter = router({
   }),
 
   // ─── Landed Cost Computation ───────────────────────────────────────────────
-  // Computes the full landed cost breakdown for a SKU given its FOB and dims
+  // Computes the full landed cost breakdown for a SKU given its FOB and dims.
+  //
+  // Phase 18 changes:
+  //   - Finding #15: Fixed tariff stacking (122 on non-232 base only)
+  //   - Finding #17: Blank HTS → isHtsBlocked = true
+  //   - Finding #10: Weight-vs-cube freight mode
+  //   - Finding #14: Tariff scenario selector (current_law / base_2027 / stress)
+  //   - Finding #8:  Zero-dims → isFreightBlocked = true
+  //   - Finding #19: MPF min/max caps
   "landedCost.compute": publicProcedure
     .input(
       z.object({
@@ -273,6 +336,8 @@ export const supplySideRouter = router({
         cartonW: z.number().optional(), // carton width in cm
         cartonH: z.number().optional(), // carton height in cm
         pcsPerCarton: z.number().optional().default(1),
+        grossWtKg: z.number().optional(), // gross weight per carton in kg (for weight-vs-cube)
+        unitsPerEntry: z.number().optional().default(1), // for MPF min/max allocation
       })
     )
     .query(async ({ input }) => {
@@ -286,6 +351,13 @@ export const supplySideRouter = router({
         cfg[row.key] = Number(row.value);
       }
 
+      // Load pricing_config for tariff scenario and freight mode
+      const pricingConfigRows = await db.select().from(pricingConfig);
+      const pcfg: Record<string, string> = {};
+      for (const row of pricingConfigRows) {
+        if (row.key && row.value) pcfg[row.key] = row.value;
+      }
+
       // Fall back to defaults if not seeded
       const oceanPerCuft = cfg["ocean_freight_per_cuft"] ?? 3.5;
       const loadPct = cfg["load_pct"] ?? 0.05;
@@ -296,26 +368,51 @@ export const supplySideRouter = router({
       const hmfPct = cfg["hmf_pct"] ?? 0.00125;
       const mpfPct = cfg["mpf_pct"] ?? 0.003464;
 
-      // Section 122 toggle: enabled by default unless explicitly disabled via freight_config key
-      // sec122_enabled: 1 = on, 0 = off. Expiry date stored as sec122_expiry_ts (unix ms).
-      // Per Ian: Sec 122 expires July 24, 2026 unless Congress extends. Toggle allows easy on/off.
-      const sec122Enabled = cfg["sec122_enabled"] !== undefined ? cfg["sec122_enabled"] !== 0 : true;
+      // MPF min/max caps (Finding #19)
+      const mpfMinUsd = Number(pcfg["mpf_min_usd"] ?? "33.58");
+      const mpfMaxUsd = Number(pcfg["mpf_max_usd"] ?? "651.50");
+      const unitsPerEntry = input.unitsPerEntry ?? 1;
+
+      // Freight mode (Finding #10): cube | weight_or_cube
+      const freightMode = pcfg["freight_mode"] ?? "cube";
+      const containerMaxWeightLbs = Number(pcfg["container_max_weight_lbs"] ?? "44000");
+
+      // Tariff scenario (Finding #14): current_law | base_2027 | stress
+      const tariffScenario = pcfg["tariff_scenario"] ?? "current_law";
+      const sec301StressPct = Number(pcfg["sec301_stress_pct"] ?? "0.35");
+
+      // Section 122 toggle (legacy key still respected; scenario overrides it)
+      // current_law → sec122 active; base_2027 → sec122 off; stress → sec122 off
+      const sec122Enabled = tariffScenario === "current_law"
+        ? (cfg["sec122_enabled"] !== undefined ? cfg["sec122_enabled"] !== 0 : true)
+        : false;
+
+      // Finding #17: Blank HTS code → blocked (cannot price without HTS)
+      const hasHtsCode = !!(input.htsCode && input.htsCode.trim().length > 0);
+      const isHtsBlocked = !hasHtsCode;
 
       // Look up HTS tariff rates
       let baseDutyPct = 0, sec301Pct = 0, sec232Pct = 0, sec122Pct = 0;
       let htsRow = null;
-      if (input.htsCode) {
+      if (hasHtsCode) {
         const htsRows = await db
           .select()
           .from(htsTariffRates)
-          .where(eq(htsTariffRates.htsCode, input.htsCode));
+          .where(eq(htsTariffRates.htsCode, input.htsCode!));
         if (htsRows.length > 0) {
           htsRow = htsRows[0];
           baseDutyPct = Number(htsRow.baseDutyPct ?? 0) / 100;
-          sec301Pct = Number(htsRow.sec301Pct ?? 0) / 100;
           sec232Pct = Number(htsRow.sec232Pct ?? 0) / 100;
-          // Apply Section 122 only if toggle is enabled
+          // Apply Section 122 only if scenario is current_law and toggle is on
           sec122Pct = sec122Enabled ? Number(htsRow.sec122Pct ?? 0) / 100 : 0;
+
+          // Tariff scenario overrides for Section 301 (Finding #14)
+          if (tariffScenario === "stress") {
+            // Stress scenario: 301 escalates to sec301_stress_pct flat rate
+            sec301Pct = sec301StressPct;
+          } else {
+            sec301Pct = Number(htsRow.sec301Pct ?? 0) / 100;
+          }
         }
       }
 
@@ -324,64 +421,118 @@ export const supplySideRouter = router({
       // Step 1: Load
       const loadAmt = fob * loadPct;
 
-      // Step 2: Tariff and Duty
-      const tariffPct = sec301Pct + sec232Pct + sec122Pct;
-      const tariffAmt = fob * tariffPct;
-      const dutyAmt = fob * baseDutyPct;
+      // Step 2: Tariff and Duty — FIXED stacking (Finding #15)
+      const { tariffAmt, dutyAmt, sec301Amt, sec232Amt, sec122Amt } = computeTariffAmt(
+        fob, baseDutyPct, sec301Pct, sec232Pct, sec122Pct
+      );
 
-      // Step 3: Volumetric freight (requires dims)
+      // Step 3: Volumetric/weight freight (requires dims)
       let unitCuFt = 0;
       let hasDims = false;
+      let isFreightBlocked = false; // Finding #8: hard-stop when all dims are 0
+
       if (input.cartonL && input.cartonW && input.cartonH && input.pcsPerCarton) {
-        unitCuFt = (input.cartonL * input.cartonW * input.cartonH) / 1_000_000 * 35.3147 / input.pcsPerCarton;
-        hasDims = true;
+        const l = input.cartonL, w = input.cartonW, h = input.cartonH;
+        const pcs = input.pcsPerCarton;
+        // All-zero dims check (Finding #8)
+        if (l === 0 && w === 0 && h === 0) {
+          isFreightBlocked = true;
+        } else {
+          unitCuFt = (l * w * h) / 1_000_000 * 35.3147 / pcs;
+          hasDims = true;
+        }
       }
 
-      const oceanFreightAmt = hasDims ? unitCuFt * oceanPerCuft : 0;
-      const destinationAmt = hasDims ? unitCuFt * (destinationTotal / containerUsableCuft) : 0;
-      const drayageAmt = hasDims ? unitCuFt * (drayagePerContainer / containerUsableCuft) : 0;
-      const entryFeesAmt = hasDims ? unitCuFt * (entryFeesTotal / containerUsableCuft) : 0;
+      // Weight-vs-cube freight allocation (Finding #10)
+      // When freightMode = weight_or_cube, compute weight-based share and use whichever is larger.
+      let freightAllocationFactor = 0; // fraction of container this unit occupies
+      let freightBasis: "cube" | "weight" | "none" = "none";
 
-      // Step 4: HMF and MPF
+      if (hasDims && !isFreightBlocked) {
+        const cubeFraction = unitCuFt / containerUsableCuft;
+
+        if (freightMode === "weight_or_cube" && input.grossWtKg && input.pcsPerCarton) {
+          // Convert kg per carton → lbs per unit
+          const grossWtLbsPerUnit = (input.grossWtKg * 2.20462) / input.pcsPerCarton;
+          const weightFraction = grossWtLbsPerUnit / containerMaxWeightLbs;
+          if (weightFraction > cubeFraction) {
+            freightAllocationFactor = weightFraction;
+            freightBasis = "weight";
+          } else {
+            freightAllocationFactor = cubeFraction;
+            freightBasis = "cube";
+          }
+        } else {
+          freightAllocationFactor = cubeFraction;
+          freightBasis = "cube";
+        }
+      }
+
+      const oceanFreightAmt = hasDims && !isFreightBlocked ? unitCuFt * oceanPerCuft : 0;
+      const destinationAmt = hasDims && !isFreightBlocked ? freightAllocationFactor * destinationTotal : 0;
+      const drayageAmt = hasDims && !isFreightBlocked ? freightAllocationFactor * drayagePerContainer : 0;
+      const entryFeesAmt = hasDims && !isFreightBlocked ? freightAllocationFactor * entryFeesTotal : 0;
+
+      // Step 4: HMF and MPF with min/max caps (Finding #19)
       const hmfAmt = fob * hmfPct;
-      const mpfAmt = fob * mpfPct;
+      // MPF: raw rate, then clamp to [min/units, max/units]
+      const mpfRaw = fob * mpfPct;
+      const mpfPerUnitMin = mpfMinUsd / unitsPerEntry;
+      const mpfPerUnitMax = mpfMaxUsd / unitsPerEntry;
+      const mpfAmt = Math.min(Math.max(mpfRaw, mpfPerUnitMin), mpfPerUnitMax);
 
       // Total landed cost
       const landedCost = fob + loadAmt + tariffAmt + dutyAmt + oceanFreightAmt + destinationAmt + drayageAmt + entryFeesAmt + hmfAmt + mpfAmt;
+
+      const tariffScenarioLabel =
+        tariffScenario === "current_law" ? "Current Law (Sec 122 active)" :
+        tariffScenario === "base_2027" ? "2027 Base (Sec 122 expires)" :
+        "Stress (Sec 122 expires + 301 → 35%)";
 
       return {
         fob,
         loadPct: loadPct * 100,
         loadAmt,
-        tariffPct: tariffPct * 100,
+        tariffPct: (sec301Pct + sec232Pct + sec122Pct) * 100,
         tariffAmt,
         baseDutyPct: baseDutyPct * 100,
         dutyAmt,
+        sec301Amt,
+        sec232Amt,
+        sec122Amt,
         unitCuFt,
         hasDims,
+        isFreightBlocked,
+        isHtsBlocked,
+        freightBasis,
+        freightAllocationFactor,
         oceanFreightAmt,
         destinationAmt,
         drayageAmt,
         entryFeesAmt,
         hmfAmt,
         mpfAmt,
+        mpfRaw,
+        mpfCapped: mpfAmt !== mpfRaw,
         landedCost,
         htsCode: input.htsCode ?? null,
         htsDescription: htsRow?.description ?? null,
+        tariffScenario,
+        tariffScenarioLabel,
         // Breakdown for display
         breakdown: [
           { label: "FOB Cost", amount: fob, formula: "Source: supplier quote", isBase: true },
           { label: "Origin Load", amount: loadAmt, formula: `FOB × ${(loadPct * 100).toFixed(1)}%`, source: "Origin handling & inland freight to port" },
-          { label: "Section 301 Tariff", amount: fob * sec301Pct, formula: `FOB × ${(sec301Pct * 100).toFixed(1)}%`, source: "USTR Section 301 China tariff" },
-          { label: "Section 232 Tariff", amount: fob * sec232Pct, formula: `FOB × ${(sec232Pct * 100).toFixed(1)}%`, source: "Section 232 steel/aluminum surcharge" },
-          { label: "Section 122 Tariff", amount: fob * sec122Pct, formula: `FOB × ${(sec122Pct * 100).toFixed(1)}%`, source: `Section 122 additional tariff — ${sec122Enabled ? "ACTIVE (toggle in Freight Config)" : "DISABLED — toggle in Freight Config"}`, disabled: !sec122Enabled },
+          { label: "Section 301 Tariff", amount: sec301Amt, formula: `FOB × ${(sec301Pct * 100).toFixed(1)}%`, source: tariffScenario === "stress" ? `STRESS SCENARIO: flat ${(sec301StressPct * 100).toFixed(0)}%` : "USTR Section 301 China tariff" },
+          { label: "Section 232 Tariff", amount: sec232Amt, formula: `FOB × ${(sec232Pct * 100).toFixed(1)}%`, source: "Section 232 steel/aluminum surcharge. Rate: 50% for steel/Al; 0% for pool equipment (per CBP 6/4/25)." },
+          { label: "Section 122 Tariff", amount: sec122Amt, formula: `FOB × (1 − ${(sec232Pct * 100).toFixed(1)}%) × ${(sec122Pct * 100).toFixed(1)}%`, source: `Section 122 — applies to non-232 FOB only (Finding #15). Scenario: ${tariffScenarioLabel}`, disabled: !sec122Enabled },
           { label: "Base Duty", amount: dutyAmt, formula: `FOB × ${(baseDutyPct * 100).toFixed(2)}%`, source: `HTS ${input.htsCode ?? "—"} standard duty rate` },
-          { label: "Ocean Freight", amount: oceanFreightAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × $${oceanPerCuft}/cu ft` : "No dims — enter carton dimensions", source: "Volumetric rate — confirm with Chuck" },
-          { label: "Destination Charges", amount: destinationAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × ($${destinationTotal} ÷ ${containerUsableCuft} cu ft)` : "No dims", source: "Lynden invoice #40726271: chassis, yard prepull & storage, driver detention" },
-          { label: "Drayage", amount: drayageAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × ($${drayagePerContainer} ÷ ${containerUsableCuft} cu ft)` : "No dims", source: "Chuck's confirmed rate — $600 per container" },
-          { label: "Entry Fees", amount: entryFeesAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × ($${entryFeesTotal} ÷ ${containerUsableCuft} cu ft)` : "No dims", source: "Customs clearance $125, ISF $45, handling $65" },
+          { label: "Ocean Freight", amount: oceanFreightAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × $${oceanPerCuft}/cu ft` : isFreightBlocked ? "BLOCKED — all carton dims are zero (Finding #8)" : "No dims — enter carton dimensions", source: "Volumetric rate — confirm with Chuck" },
+          { label: "Destination Charges", amount: destinationAmt, formula: hasDims ? `${freightBasis === "weight" ? `weight-governed: ${(freightAllocationFactor * 100).toFixed(4)}% × $${destinationTotal}` : `${unitCuFt.toFixed(3)} cu ft × ($${destinationTotal} ÷ ${containerUsableCuft} cu ft)`}` : isFreightBlocked ? "BLOCKED" : "No dims", source: "Lynden invoice #40726271: chassis, yard prepull & storage, driver detention" },
+          { label: "Drayage", amount: drayageAmt, formula: hasDims ? `${freightBasis === "weight" ? `weight-governed` : `${unitCuFt.toFixed(3)} cu ft`} × ($${drayagePerContainer} ÷ ${containerUsableCuft} cu ft)` : isFreightBlocked ? "BLOCKED" : "No dims", source: "Chuck's confirmed rate — $600 per container" },
+          { label: "Entry Fees", amount: entryFeesAmt, formula: hasDims ? `${unitCuFt.toFixed(3)} cu ft × ($${entryFeesTotal} ÷ ${containerUsableCuft} cu ft)` : isFreightBlocked ? "BLOCKED" : "No dims", source: "Customs clearance $125, ISF $45, handling $65" },
           { label: "Harbor Maintenance Fee", amount: hmfAmt, formula: `FOB × ${(hmfPct * 100).toFixed(4)}%`, source: "US CBP — 19 CFR 24.24" },
-          { label: "Merchandise Processing Fee", amount: mpfAmt, formula: `FOB × ${(mpfPct * 100).toFixed(4)}%`, source: "US CBP — 19 CFR 24.23 (min $32.71, max $634.62 per entry)" },
+          { label: "Merchandise Processing Fee", amount: mpfAmt, formula: `clamp(FOB × ${(mpfPct * 100).toFixed(4)}%, $${(mpfPerUnitMin).toFixed(2)}/unit, $${(mpfPerUnitMax).toFixed(2)}/unit)${mpfAmt !== mpfRaw ? ` [capped from $${mpfRaw.toFixed(4)}]` : ""}`, source: "US CBP — 19 CFR 24.23. Min $33.58, max $651.50 per entry (Finding #19)" },
           { label: "Total Landed Cost", amount: landedCost, formula: "Sum of all above", isTotal: true },
         ],
       };
@@ -390,6 +541,13 @@ export const supplySideRouter = router({
   // ─── Customer History / PNL Analysis ──────────────────────────────────────
   // Returns per-customer PNL: qty, avg price paid (2 seasons), 2027 landed,
   // import net at their tier, domestic net, % increase, PNL prior vs now
+  //
+  // Phase 18 (Finding #21): Royalty is in the pricing denominator (confirmed by Dan).
+  // The PNL "kept margin" = (importNet - landedCost) / importNet.
+  // Royalty is NOT deducted from PNL as a separate line — it is already embedded in the
+  // pricing denominator, which means the list price is set high enough to cover royalty.
+  // The kept margin shown is the margin AFTER royalty is embedded in the price.
+  // Column label updated to "Gross Margin at 2027 Landed Cost" per Ian Finding #26.
   "customerHistory.get": publicProcedure
     .input(
       z.object({
@@ -448,6 +606,9 @@ export const supplySideRouter = router({
         const royalty = Number(row.bdLicenseFeePct ?? 0);
 
         // Import list price: landed ÷ (1 - importMargin - royalty)
+        // Royalty is in the pricing denominator (confirmed by Dan, Finding #23).
+        // This means the list price is set high enough to cover royalty.
+        // Kept margin = (net - landed) / net — royalty is already embedded.
         const importDenom = 1 - importMargin - royalty;
         const importList = importDenom > 0 ? landed / importDenom : 0;
         const importNet = importList * (1 - tierDiscountPct);
@@ -457,7 +618,12 @@ export const supplySideRouter = router({
         const domesticList = domesticDenom > 0 ? landed / domesticDenom : 0;
         const domesticNet = domesticList * (1 - tierDiscountPct);
 
-        // PNL calculations
+        // Gross Margin at 2027 Landed Cost (Finding #26 — renamed from "PNL")
+        // = (importNet - landedCost) / importNet
+        // This is the kept margin after royalty is embedded in the price.
+        const grossMargin2027 = importNet > 0 ? (importNet - landed) / importNet : 0;
+
+        // Cost delta: 2027 landed cost vs historical avg FOB cost (cost-vs-cost per Dan)
         const pnlPrior = qty * (avgPricePaid - landed);   // prior contribution at new cost
         const pnlNow = qty * (importNet - landed);          // new contribution at 2027 import net
         const pctIncrease = avgPricePaid > 0 ? (importNet / avgPricePaid) - 1 : null;
@@ -479,6 +645,7 @@ export const supplySideRouter = router({
           pctIncrease,
           pnlPrior,
           pnlNow,
+          grossMargin2027,  // Finding #26: renamed column
           hasCost: landed > 0,
         };
       });
@@ -532,39 +699,41 @@ export const supplySideRouter = router({
       let skuCount = 0;
 
       if (input.scope === "supply") {
-        // Snapshot: all SKU cost/pricing data
-        const rows = await db
-          .select({
-            id: skus.id,
-            sku: skus.sku,
-            fob2027Price: skus.fob2027Price,
-            fob2027Status: skus.fob2027Status,
-            landedCost: skuPricing.landedCost,
-            factoryCost: skuPricing.factoryCost,
-            fob26Costing: skuPricing.fob26Costing,
-            tariffPct: skuPricing.tariffPct,
-            dutyPct: skuPricing.dutyPct,
-            freight: skuPricing.freight,
-            bdLicenseFeePct: skuPricing.bdLicenseFeePct,
-          })
-          .from(skus)
-          .leftJoin(skuPricing, eq(skus.id, skuPricing.skuId));
-        skuCount = rows.length;
-        snapshotData = { type: "supply", capturedAt: new Date().toISOString(), rows };
+        // Snapshot: all SKU cost/pricing data + tariff/freight config
+        const [skuRows, freightRows, pricingConfigRows] = await Promise.all([
+          db
+            .select({
+              id: skus.id,
+              sku: skus.sku,
+              fob2027Price: skus.fob2027Price,
+              fob2027Status: skus.fob2027Status,
+              landedCost: skuPricing.landedCost,
+              factoryCost: skuPricing.factoryCost,
+              fob26Costing: skuPricing.fob26Costing,
+              tariffPct: skuPricing.tariffPct,
+              dutyPct: skuPricing.dutyPct,
+              freight: skuPricing.freight,
+              bdLicenseFeePct: skuPricing.bdLicenseFeePct,
+            })
+            .from(skus)
+            .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id)),
+          db.select().from(freightConfig),
+          db.select().from(pricingConfig),
+        ]);
+        skuCount = skuRows.length;
+        snapshotData = { skus: skuRows, freightConfig: freightRows, pricingConfig: pricingConfigRows };
       } else {
-        // Snapshot: all margin rules, tier discounts, and overrides
-        const marginRows = await db.select().from(dealerMarginRules);
-        const tierRows = await db.select().from(tierDiscounts);
-        skuCount = 0;
-        snapshotData = {
-          type: "buy",
-          capturedAt: new Date().toISOString(),
-          marginRules: marginRows,
-          tierDiscounts: tierRows,
-        };
+        // Buy-side snapshot: margin rules + tier discounts + pricing config
+        const [marginRules, tiers, configRows] = await Promise.all([
+          db.select().from(dealerMarginRules),
+          db.select().from(tierDiscounts),
+          db.select().from(pricingConfig),
+        ]);
+        skuCount = marginRules.length + tiers.length;
+        snapshotData = { marginRules, tierDiscounts: tiers, pricingConfig: configRows };
       }
 
-      const result = await db.insert(priceSnapshots).values({
+      await db.insert(priceSnapshots).values({
         label: input.label,
         scope: input.scope,
         snapshotData: JSON.stringify(snapshotData),
@@ -572,21 +741,70 @@ export const supplySideRouter = router({
         notes: input.notes ?? null,
       });
 
-      return { success: true, id: Number((result as any).insertId) };
+      return { success: true };
     }),
 
-  "snapshots.get": publicProcedure
+  "snapshots.restore": publicProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
       const rows = await db.select().from(priceSnapshots).where(eq(priceSnapshots.id, input.id));
       if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Snapshot not found" });
-      const snap = rows[0];
-      return {
-        ...snap,
-        snapshotData: JSON.parse(snap.snapshotData),
-      };
+
+      const snapshot = rows[0];
+      const data = snapshot.snapshotData as any;
+
+      if (snapshot.scope === "supply" && data.skus) {
+        const { skus, skuPricing } = await import("../../drizzle/schema");
+        for (const row of data.skus) {
+          if (!row.id) continue;
+          await db
+            .update(skus)
+            .set({
+              fob2027Price: row.fob2027Price,
+              fob2027Status: row.fob2027Status,
+            })
+            .where(eq(skus.id, row.id));
+          if (row.landedCost !== undefined) {
+            await db
+              .update(skuPricing)
+              .set({
+                landedCost: row.landedCost,
+                factoryCost: row.factoryCost,
+                fob26Costing: row.fob26Costing,
+                tariffPct: row.tariffPct,
+                dutyPct: row.dutyPct,
+                freight: row.freight,
+                bdLicenseFeePct: row.bdLicenseFeePct,
+              })
+              .where(eq(skuPricing.skuId, row.id));
+          }
+        }
+      } else if (snapshot.scope === "buy" && data.marginRules) {
+        const { dealerMarginRules, tierDiscounts } = await import("../../drizzle/schema");
+        for (const rule of data.marginRules) {
+          if (!rule.id) continue;
+          await db
+            .update(dealerMarginRules)
+            .set({
+              importMarginPct: rule.importMarginPct,
+              domesticMarginPct: rule.domesticMarginPct,
+              notes: rule.notes,
+            })
+            .where(eq(dealerMarginRules.id, rule.id));
+        }
+        for (const tier of data.tierDiscounts ?? []) {
+          if (!tier.tier) continue;
+          await db
+            .update(tierDiscounts)
+            .set({ discountPct: tier.discountPct, notes: tier.notes })
+            .where(eq(tierDiscounts.tier, tier.tier));
+        }
+      }
+
+      return { success: true, label: snapshot.label };
     }),
 
   "snapshots.delete": publicProcedure
@@ -596,63 +814,5 @@ export const supplySideRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       await db.delete(priceSnapshots).where(eq(priceSnapshots.id, input.id));
       return { success: true };
-    }),
-
-  "snapshots.restore": publicProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-      const rows = await db.select().from(priceSnapshots).where(eq(priceSnapshots.id, input.id));
-      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Snapshot not found" });
-      const snap = rows[0];
-      const data = JSON.parse(snap.snapshotData);
-      const { skus, skuPricing, dealerMarginRules, tierDiscounts } = await import("../../drizzle/schema");
-
-      if (snap.scope === "supply" && data.rows) {
-        // Restore supply-side: update each SKU's cost fields from snapshot
-        for (const row of data.rows as Array<{
-          id: number;
-          fob2027Price: string | null;
-          fob2027Status: string | null;
-          landedCost: string | null;
-          factoryCost: string | null;
-          fob26Costing: string | null;
-          tariffPct: string | null;
-          dutyPct: string | null;
-          freight: string | null;
-          bdLicenseFeePct: string | null;
-        }>) {
-          // Restore SKU-level fields
-          await db.update(skus).set({
-            fob2027Price: row.fob2027Price,
-            fob2027Status: (row.fob2027Status as "confirmed" | "placeholder" | "missing" | null),
-          }).where(eq(skus.id, row.id));
-          // Restore pricing fields
-          await db.update(skuPricing).set({
-            landedCost: row.landedCost,
-            factoryCost: row.factoryCost,
-            fob26Costing: row.fob26Costing,
-            tariffPct: row.tariffPct,
-            dutyPct: row.dutyPct,
-            freight: row.freight,
-            bdLicenseFeePct: row.bdLicenseFeePct,
-          }).where(eq(skuPricing.skuId, row.id));
-        }
-        return { success: true, restoredCount: data.rows.length, scope: "supply" };
-      } else if (snap.scope === "buy" && data.marginRules) {
-        // Restore buy-side: replace all margin rules and tier discounts
-        await db.delete(dealerMarginRules);
-        if (data.marginRules.length > 0) {
-          await db.insert(dealerMarginRules).values(data.marginRules);
-        }
-        await db.delete(tierDiscounts);
-        if (data.tierDiscounts && data.tierDiscounts.length > 0) {
-          await db.insert(tierDiscounts).values(data.tierDiscounts);
-        }
-        return { success: true, restoredCount: data.marginRules.length, scope: "buy" };
-      }
-
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Snapshot data format not recognized" });
     }),
 });

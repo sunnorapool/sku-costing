@@ -312,14 +312,15 @@
 
 ## Phase 18 — Ian's Register Findings (Priority 1 Critical)
 
-- [ ] Fix Section 232 tariff rate: update from 25% to 50% in hts_tariff_rates table (per CBP 6/4/25) — Finding #15
-- [ ] Fix tariff stacking: Section 122 must NOT stack on 232-covered portion; fix formula so it applies only to non-232 base — Finding #15
-- [ ] Block pricing for SKUs with blank HTS codes (same BLOCKED behavior as missing cost) — Finding #17
-- [ ] Add weight-vs-cube freight allocation: use whichever governs (weight-limited cargo) — Finding #10
-- [ ] Add tariff scenario selector to Freight Config: Current Law / 2027 Base / Stress — Finding #14
-- [ ] Hard-stop freight calculation for SKUs with all carton dims = 0 (BLOCKED-freight flag) — Finding #8
-- [ ] Verify royalty flows through PNL as a deduction for B&D SKUs — Finding #21
-- [ ] Add MPF min/max cap logic to landed cost engine ($33.58 min / $651.50 max per entry) — Finding #19
-- [ ] Add configurable price rounding rules to pricing engine — Finding #30
-- [ ] Verify kept-margin display formula for royalty-bearing SKUs (~0.6 pt overstatement) — Finding #22
-- [ ] Verify PNL column labels (rename to "Gross Margin at 2027 Landed Cost" per Ian) — Finding #26
+- [x] Fix Section 232 tariff rate: update from 25% to 50% in hts_tariff_rates table (per CBP 6/4/25) — Finding #15
+- [x] Fix tariff stacking: Section 122 must NOT stack on 232-covered portion; fix formula so it applies only to non-232 base — Finding #15
+- [x] Block pricing for SKUs with blank HTS codes (same BLOCKED behavior as missing cost) — Finding #17
+- [x] Add weight-vs-cube freight allocation: use whichever governs (weight-limited cargo) — Finding #10
+- [x] Add tariff scenario selector to Pricing Assumptions: Current Law / 2027 Base / Stress — Finding #14
+- [x] Hard-stop freight calculation for SKUs with all carton dims = 0 (BLOCKED-freight flag) — Finding #8
+- [x] Verify royalty flows through PNL as a deduction for B&D SKUs — Finding #21 (confirmed embedded in pricing denominator per Dan)
+- [x] Add MPF min/max cap logic to landed cost engine ($33.58 min / $651.50 max per entry) — Finding #19
+- [x] Add configurable price rounding rules to pricing engine — Finding #30
+- [x] Verify kept-margin display formula for royalty-bearing SKUs (~0.6 pt overstatement) — Finding #22 (formula correct; royalty in denominator means no overstatement)
+- [x] Rename PNL column labels to "Gross Margin at 2027 Landed Cost" per Ian — Finding #26
+- [x] 72 tests passing, 0 TypeScript errors

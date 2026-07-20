@@ -138,6 +138,58 @@ function AssumptionsTab() {
         </CardContent>
       </Card>
 
+      {/* Tariff Scenario — Finding #14 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Tariff Scenario</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Active Scenario</Label>
+              <Select
+                value={configMap["tariff_scenario"] ?? "current_law"}
+                onValueChange={(v) => updateConfig.mutate({ key: "tariff_scenario", value: v })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_law">Current Law — Section 122 active</SelectItem>
+                  <SelectItem value="base_2027">2027 Base — Section 122 expires</SelectItem>
+                  <SelectItem value="stress">Stress — Sec 122 expires + 301 → 35%</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Price Rounding</Label>
+              <Select
+                value={configMap["price_rounding"] ?? "none"}
+                onValueChange={(v) => updateConfig.mutate({ key: "price_rounding", value: v })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (raw decimal)</SelectItem>
+                  <SelectItem value="cent">Nearest cent ($0.01)</SelectItem>
+                  <SelectItem value="nickel">Nearest nickel ($0.05)</SelectItem>
+                  <SelectItem value="dime">Nearest dime ($0.10)</SelectItem>
+                  <SelectItem value="dollar">Nearest dollar ($1.00)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-3 text-xs text-amber-800 dark:text-amber-200">
+            <strong>Section 232 note (Finding #15):</strong> Section 122 applies only to the non-232-covered FOB portion. For pool equipment, Section 232 = 0%, so the stacking simplification holds. Steel/aluminum products: 232 rate is 50% (CBP 6/4/25). Stress scenario overrides Section 301 to a flat 35%.
+          </div>
+          <div className="mt-3">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Domestic Track Definition (Finding #28)</Label>
+            <p className="mt-1 text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
+              {configMap["domestic_track_definition"] ?? "Not defined — customer eligibility TBD by Dan."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Global Margins */}
       <Card>
         <CardHeader>
@@ -648,10 +700,10 @@ function BuySideMatrix() {
                 <>
                   {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import List</TableHead>}
                   {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Net</TableHead>}
-                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30">Import Margin</TableHead>}
+                  {(viewMode === "import" || viewMode === "both") && <TableHead className="text-right bg-blue-50 dark:bg-blue-950/30" title="Gross margin at 2027 landed cost. Formula: (Import Net − Landed Cost) ÷ Import Net. Royalty is embedded in the pricing denominator (Finding #21, #26).">Gross Margin (Import)</TableHead>}
                   {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic List</TableHead>}
                   {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Net</TableHead>}
-                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30">Domestic Margin</TableHead>}
+                  {(viewMode === "domestic" || viewMode === "both") && <TableHead className="text-right bg-purple-50 dark:bg-purple-950/30" title="Gross margin at 2027 landed cost. Formula: (Domestic Net − Landed Cost) ÷ Domestic Net. Royalty is embedded in the pricing denominator (Finding #21, #26).">Gross Margin (Domestic)</TableHead>}
                 </>
               )}
             </TableRow>
