@@ -58,6 +58,11 @@ export const skus = mysqlTable("skus", {
   packingType: varchar("packing_type", { length: 64 }),
   cartonCount: int("carton_count"),
 
+  // 2027 FOB pricing fields (from Ian's verified database)
+  fob2027Price: decimal("fob_2027_price", { precision: 10, scale: 4 }),
+  fob2027Status: mysqlEnum("fob_2027_status", ["confirmed", "placeholder", "missing"]),
+  fob2027Source: varchar("fob_2027_source", { length: 256 }), // e.g. 'SPLASH 2027 quote', 'legacy avg'
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -277,3 +282,112 @@ export const channelPriceHistory = mysqlTable("channel_price_history", {
 
 export type ChannelPriceHistory = typeof channelPriceHistory.$inferSelect;
 export type InsertChannelPriceHistory = typeof channelPriceHistory.$inferInsert;
+
+// ─── Dealer Pricing (2027 Model) ──────────────────────────────────────────────
+
+// Global config key-value store (pricing_basis, pricing_mode, etc.)
+export const pricingConfig = mysqlTable("pricing_config", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PricingConfig = typeof pricingConfig.$inferSelect;
+export type InsertPricingConfig = typeof pricingConfig.$inferInsert;
+
+// Margin rules: global → category → vendor → sku (most specific wins)
+export const dealerMarginRules = mysqlTable("dealer_margin_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  scope: mysqlEnum("scope", ["global", "category", "vendor", "sku"]).notNull(),
+  scopeValue: varchar("scope_value", { length: 256 }), // null for global; category name, vendor name, or sku code otherwise
+  importMarginPct: decimal("import_margin_pct", { precision: 8, scale: 4 }), // e.g. 0.2000 = 20%
+  domesticMarginPct: decimal("domestic_margin_pct", { precision: 8, scale: 4 }), // e.g. 0.3500 = 35%
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DealerMarginRule = typeof dealerMarginRules.$inferSelect;
+export type InsertDealerMarginRule = typeof dealerMarginRules.$inferInsert;
+
+// Buyer tier discount schedules (L1/L2/L3)
+export const tierDiscounts = mysqlTable("tier_discounts", {
+  id: int("id").autoincrement().primaryKey(),
+  tier: int("tier").notNull(), // 1, 2, or 3
+  discountPct: decimal("discount_pct", { precision: 8, scale: 4 }).notNull(), // e.g. 0.1500 = 15%
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TierDiscount = typeof tierDiscounts.$inferSelect;
+export type InsertTierDiscount = typeof tierDiscounts.$inferInsert;
+
+// Dealer customers with tier assignment
+export const customers = mysqlTable("customers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull().unique(),
+  tier: int("tier").notNull().default(3), // 1, 2, or 3
+  sales2025_26: decimal("sales_2025_26", { precision: 14, scale: 2 }), // for reference
+  importDepositException: int("import_deposit_exception").default(0), // 1 = exception to 50% deposit rule
+  notes: text("notes"),
+  active: int("active").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
+
+// Customer-level discount override (overrides tier default for this customer)
+export const customerDiscountOverrides = mysqlTable("customer_discount_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customer_id").notNull(),
+  discountPct: decimal("discount_pct", { precision: 8, scale: 4 }).notNull(),
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomerDiscountOverride = typeof customerDiscountOverrides.$inferSelect;
+export type InsertCustomerDiscountOverride = typeof customerDiscountOverrides.$inferInsert;
+
+// SKU-level discount override for a specific customer (most specific wins)
+export const skuDiscountOverrides = mysqlTable("sku_discount_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+  customerId: int("customer_id").notNull(),
+  discountPct: decimal("discount_pct", { precision: 8, scale: 4 }).notNull(),
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SkuDiscountOverride = typeof skuDiscountOverrides.$inferSelect;
+export type InsertSkuDiscountOverride = typeof skuDiscountOverrides.$inferInsert;
+
+// Manual price overrides (bypass the computed price entirely for a SKU × customer)
+export const dealerPriceOverrides = mysqlTable("dealer_price_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  skuId: int("sku_id").notNull(),
+  customerId: int("customer_id").notNull(),
+  importListOverride: decimal("import_list_override", { precision: 10, scale: 2 }),
+  domesticListOverride: decimal("domestic_list_override", { precision: 10, scale: 2 }),
+  importNetOverride: decimal("import_net_override", { precision: 10, scale: 2 }),
+  domesticNetOverride: decimal("domestic_net_override", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DealerPriceOverride = typeof dealerPriceOverrides.$inferSelect;
+export type InsertDealerPriceOverride = typeof dealerPriceOverrides.$inferInsert;
+
+// Password-protected locks for supply side (costs/margins) and buy side (discounts/net prices)
+export const pricingLocks = mysqlTable("pricing_locks", {
+  id: int("id").autoincrement().primaryKey(),
+  scope: mysqlEnum("scope", ["supply", "buy"]).notNull().unique(),
+  locked: int("locked").default(0).notNull(), // 0 = unlocked, 1 = locked
+  passwordHash: varchar("password_hash", { length: 256 }), // bcrypt hash
+  lockedAt: timestamp("locked_at"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PricingLock = typeof pricingLocks.$inferSelect;
+export type InsertPricingLock = typeof pricingLocks.$inferInsert;

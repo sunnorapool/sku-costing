@@ -29,6 +29,7 @@ import { invokeLLM } from "./_core/llm";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { dealerPricingRouter } from "./routers/dealerPricing";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,7 @@ const skuSchema = z.object({
 
 export const appRouter = router({
   system: systemRouter,
+  dealerPricing: dealerPricingRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

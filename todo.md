@@ -197,3 +197,51 @@
 - [x] Email digest: /api/scheduled/margin-digest handler — query margin alerts, build HTML email, send to Chuck/Dan/Ben
 - [x] Email digest: HTML email with summary stats + top 20 worst-margin SKUs table
 - [ ] Email digest: register daily cron at 8am ET (13:00 UTC) via manus-heartbeat CLI after deploy (requires publish first)
+
+## Phase 12 — Ian's Verified DB Import
+
+- [x] DB: Add fob2027Price (decimal), fob2027Status (enum: confirmed|placeholder|missing), fob2027Source (text) columns to skus table
+- [x] DB: Run migration via webdev_execute_sql
+- [x] Import: match Ian's 2,152 SKUs to existing SKUs by canonical_sku, update carton dims, HTS code, source status, supplier, sales qty/amount
+- [x] Import: import 24 approved 2027 FOB quote prices into fob2027Price + set fob2027Status='confirmed'
+- [x] Import: set fob2027Status='placeholder' for SKUs with legacy cost, 'missing' for SKUs with no cost at all
+- [x] UI: Add "Needs 2027 FOB" filter option to SKU table source status dropdown
+- [x] UI: Color-code fob2027Status in the table (green=confirmed, yellow=placeholder, red=missing)
+- [x] UI: Add fob2027Price column to the SKU table (toggleable)
+- [x] Run tests and save checkpoint
+
+## Phase 13 — 2027 Dealer Pricing Module
+
+### Database
+- [x] DB: `customers` table (id, name, tier: 1|2|3, sales2025_26, notes, import_deposit_exception, active)
+- [x] DB: `dealer_margin_rules` table (id, scope: global|category|vendor|sku, scope_value, import_margin_pct, domestic_margin_pct)
+- [x] DB: `tier_discounts` table (id, tier: 1|2|3, discount_pct, notes)
+- [x] DB: `customer_discount_overrides` table (id, customer_id, discount_pct, notes)
+- [x] DB: `sku_discount_overrides` table (id, sku_id, customer_id, discount_pct, notes)
+- [x] DB: `pricing_locks` table (id, scope: supply|buy, locked, password_hash, locked_at)
+- [x] DB: `dealer_price_overrides` table (id, sku_id, customer_id, import_list_override, domestic_list_override, import_net_override, domestic_net_override)
+- [x] DB: `pricing_config` table (id, key, value) — pricing_basis, pricing_mode
+- [x] Run migration SQL via webdev_execute_sql
+- [x] Seed: 57 customers with tier assignments from Dan's Excel
+- [x] Seed: global margin rules (20% import, 35% domestic as placeholders)
+- [x] Seed: tier discounts (L1=15%, L2=10%, L3=5% as placeholders)
+
+### Backend
+- [x] tRPC: dealerPricing.getAssumptions — returns all margin rules, tier discounts, config
+- [x] tRPC: dealerPricing.updateMarginRule — set/update margin at global/category/vendor/sku level
+- [x] tRPC: dealerPricing.updateTierDiscount — set tier discount %
+- [x] tRPC: dealerPricing.getCustomers — list all customers with tier
+- [x] tRPC: dealerPricing.upsertCustomer — create/update customer + tier assignment
+- [x] tRPC: dealerPricing.getBuySideMatrix — compute import/domestic list + net prices for all SKUs (paginated)
+- [x] tRPC: dealerPricing.setOverride — manual override for a SKU × customer price
+- [x] tRPC: dealerPricing.lock / unlock — password-protect supply or buy side
+- [x] tRPC: dealerPricing.exportPriceSheet — CSV export for a customer
+
+### Frontend
+- [x] New page: /dealer-pricing — four tabs: Buy Side Matrix, Assumptions, Customers, Locks
+- [x] Assumptions tab: global margin settings, tier discount table, category/vendor override table, pricing basis toggle, pricing mode toggle
+- [x] Buy Side tab: SKU matrix showing import_list, import_net L1/L2/L3, domestic_list, domestic_net L1/L2/L3 — color-coded by kept margin
+- [x] Buy Side: customer/brand/FOB status filters, single-customer view with margin display
+- [x] Locks tab: password-protect supply or buy side independently
+- [x] Sidebar nav entry: 2027 Dealer Pricing
+- [x] Run tests (21 passing) and save checkpoint

@@ -11,6 +11,7 @@ import ChannelPricing from "./pages/ChannelPricing";
 import SKUDetail from "./pages/SKUDetail";
 import MarginAlerts from "./pages/MarginAlerts";
 import ModelLookup from "./pages/ModelLookup";
+import DealerPricing from "./pages/DealerPricing";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
         <Route path={"/channel-pricing"} component={ChannelPricing} />
         <Route path={"/alerts"} component={MarginAlerts} />
         <Route path={"/lookup"} component={ModelLookup} />
+        <Route path={"/dealer-pricing"} component={DealerPricing} />
         <Route path={"/sku/:id"}>
           {(params) => <SKUDetail skuId={Number(params.id)} />}
         </Route>
