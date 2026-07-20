@@ -296,3 +296,30 @@
 - [x] Frontend: BLOCKED badge (red) on SKUs with missing cost in Buy Side Matrix, row dimmed
 - [x] Frontend: Section 122 amber toggle card in Freight Config tab with enable/disable button and expiry note
 - [x] 49 tests passing, 0 TypeScript errors
+
+## Phase 17 — Market Price Study + Outbound Freight
+
+- [x] DB: `market_prices` table (sku_code, category, sales_2025_26, hist_avg_price_paid, model_landed_cost, model_import_list, model_t1_net, our_street_price, hayward_comp, hayward_price, pentair_comp, pentair_price, study_date)
+- [x] Run migration SQL
+- [x] Import Ian's 48-SKU market price study CSV into market_prices table
+- [x] tRPC: marketPrices.list — paginated, filterable by category and search
+- [x] tRPC: marketPrices.getBySku — single SKU competitive reference
+- [x] tRPC: marketPrices.getCategories — distinct category list
+- [x] tRPC: marketPrices.summary — category-level stats (avg dealer margin, AC vs Hayward/Pentair)
+- [x] Supply Side Settings: add "Market Price Study" tab with summary cards, category table, and SKU-level competitive reference table
+- [x] 49 tests passing, 0 TypeScript errors
+- [ ] Freight Config: add outbound delivery cost (warehouse-to-client) per Chuck — PENDING Chuck confirmation
+
+## Phase 18 — Ian's Register Findings (Priority 1 Critical)
+
+- [ ] Fix Section 232 tariff rate: update from 25% to 50% in hts_tariff_rates table (per CBP 6/4/25) — Finding #15
+- [ ] Fix tariff stacking: Section 122 must NOT stack on 232-covered portion; fix formula so it applies only to non-232 base — Finding #15
+- [ ] Block pricing for SKUs with blank HTS codes (same BLOCKED behavior as missing cost) — Finding #17
+- [ ] Add weight-vs-cube freight allocation: use whichever governs (weight-limited cargo) — Finding #10
+- [ ] Add tariff scenario selector to Freight Config: Current Law / 2027 Base / Stress — Finding #14
+- [ ] Hard-stop freight calculation for SKUs with all carton dims = 0 (BLOCKED-freight flag) — Finding #8
+- [ ] Verify royalty flows through PNL as a deduction for B&D SKUs — Finding #21
+- [ ] Add MPF min/max cap logic to landed cost engine ($33.58 min / $651.50 max per entry) — Finding #19
+- [ ] Add configurable price rounding rules to pricing engine — Finding #30
+- [ ] Verify kept-margin display formula for royalty-bearing SKUs (~0.6 pt overstatement) — Finding #22
+- [ ] Verify PNL column labels (rename to "Gross Margin at 2027 Landed Cost" per Ian) — Finding #26

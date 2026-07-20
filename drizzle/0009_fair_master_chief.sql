@@ -1,0 +1,22 @@
+CREATE TABLE `market_prices` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`sku_code` varchar(100) NOT NULL,
+	`category` varchar(100),
+	`sales_2025_26` decimal(14,2),
+	`hist_avg_price_paid` decimal(10,2),
+	`model_landed_cost` decimal(10,2),
+	`model_import_list` decimal(10,2),
+	`model_t1_net` decimal(10,2),
+	`our_street_price` decimal(10,2),
+	`our_street_source` text,
+	`hayward_comp` varchar(255),
+	`hayward_price` decimal(10,2),
+	`hayward_source` text,
+	`pentair_comp` varchar(255),
+	`pentair_price` decimal(10,2),
+	`pentair_source` text,
+	`study_date` varchar(20) DEFAULT '2026-07-20',
+	`created_at` timestamp DEFAULT (now()),
+	CONSTRAINT `market_prices_id` PRIMARY KEY(`id`),
+	CONSTRAINT `market_prices_sku_code_unique` UNIQUE(`sku_code`)
+);

@@ -438,3 +438,31 @@ export const priceSnapshots = mysqlTable("price_snapshots", {
 
 export type PriceSnapshot = typeof priceSnapshots.$inferSelect;
 export type InsertPriceSnapshot = typeof priceSnapshots.$inferInsert;
+
+// ─── Market Price Study (Ian Allena, 2026-07-20) ─────────────────────────────
+// Competitive reference: AC street prices vs. Hayward and Pentair comparables
+// for the top 48 SKUs by 2025-26 sales volume.
+
+export const marketPrices = mysqlTable("market_prices", {
+  id: int("id").autoincrement().primaryKey(),
+  skuCode: varchar("sku_code", { length: 100 }).notNull().unique(),
+  category: varchar("category", { length: 100 }),
+  sales2025_26: decimal("sales_2025_26", { precision: 14, scale: 2 }),
+  histAvgPricePaid: decimal("hist_avg_price_paid", { precision: 10, scale: 2 }),
+  modelLandedCost: decimal("model_landed_cost", { precision: 10, scale: 2 }),
+  modelImportList: decimal("model_import_list", { precision: 10, scale: 2 }),
+  modelT1Net: decimal("model_t1_net", { precision: 10, scale: 2 }),
+  ourStreetPrice: decimal("our_street_price", { precision: 10, scale: 2 }),
+  ourStreetSource: text("our_street_source"),
+  haywardComp: varchar("hayward_comp", { length: 255 }),
+  haywardPrice: decimal("hayward_price", { precision: 10, scale: 2 }),
+  haywardSource: text("hayward_source"),
+  pentairComp: varchar("pentair_comp", { length: 255 }),
+  pentairPrice: decimal("pentair_price", { precision: 10, scale: 2 }),
+  pentairSource: text("pentair_source"),
+  studyDate: varchar("study_date", { length: 20 }).default("2026-07-20"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type MarketPrice = typeof marketPrices.$inferSelect;
+export type InsertMarketPrice = typeof marketPrices.$inferInsert;

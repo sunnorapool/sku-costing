@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
+  BarChart2,
   Camera,
   CheckCircle2,
   DollarSign,
@@ -598,6 +599,282 @@ function SnapshotsTab() {
   );
 }
 
+// ─── Market Price Study Tab ──────────────────────────────────────────────────
+function MarketPriceStudyTab() {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
+
+  const { data: categories } = trpc.marketPrices.getCategories.useQuery();
+  const { data: summary } = trpc.marketPrices.summary.useQuery();
+  const { data, isLoading } = trpc.marketPrices.list.useQuery({
+    category: category === "all" ? undefined : category,
+    search: search || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+
+  function fmtPrice(val: string | number | null | undefined) {
+    if (val === null || val === undefined || val === "") return <span className="text-muted-foreground">—</span>;
+    const n = Number(val);
+    if (isNaN(n) || n === 0) return <span className="text-muted-foreground">—</span>;
+    return <span>${n.toFixed(2)}</span>;
+  }
+
+  function fmtPct(val: number | null | undefined) {
+    if (val === null || val === undefined) return <span className="text-muted-foreground">—</span>;
+    const pct = val * 100;
+    const cls = pct >= 30 ? "text-emerald-600" : pct >= 20 ? "text-yellow-600" : pct >= 10 ? "text-orange-500" : "text-red-500";
+    return <span className={cls}>{pct.toFixed(1)}%</span>;
+  }
+
+  function vsCompetitor(ourPrice: string | null, compPrice: string | null) {
+    const our = Number(ourPrice);
+    const comp = Number(compPrice);
+    if (!our || !comp) return <span className="text-muted-foreground">—</span>;
+    const diff = ((comp - our) / comp) * 100;
+    if (diff > 0) return <span className="text-emerald-600">+{diff.toFixed(1)}% below</span>;
+    if (diff < 0) return <span className="text-red-500">{Math.abs(diff).toFixed(1)}% above</span>;
+    return <span className="text-muted-foreground">At parity</span>;
+  }
+
+  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary cards */}
+      {summary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-muted/30 rounded-lg p-3 border">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">SKUs Studied</div>
+            <div className="text-xl font-bold mt-0.5">{summary.skuCount}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Study date: {summary.studyDate}</div>
+          </div>
+          <div className="bg-muted/30 rounded-lg p-3 border">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Dealer Margin at T1 Net</div>
+            <div className="text-xl font-bold mt-0.5">
+              {summary.overallAvgDealerMarginPct !== null
+                ? `${(summary.overallAvgDealerMarginPct * 100).toFixed(1)}%`
+                : "—"}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">(Street − T1 Net) ÷ Street</div>
+          </div>
+          {summary.categories.slice(0, 2).map(cat => (
+            <div key={cat.category} className="bg-muted/30 rounded-lg p-3 border">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide truncate">{cat.category}</div>
+              <div className="text-xl font-bold mt-0.5">
+                {cat.avgAcVsHaywardPct !== null
+                  ? `${(cat.avgAcVsHaywardPct * 100).toFixed(1)}% below Hayward`
+                  : "—"}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{cat.skuCount} SKUs in study</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Category summary table */}
+      {summary && summary.categories.length > 0 && (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-muted/30 px-3 py-2 border-b">
+            <span className="text-xs font-semibold">Category Summary</span>
+            <InfoTip text="Average competitive positioning and dealer margin by product category, based on Ian's July 20, 2026 market price study." />
+          </div>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b bg-muted/10">
+                <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Category</th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">SKUs</th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                  Avg Dealer Margin
+                  <InfoTip text="Average (Street − T1 Net) ÷ Street across SKUs in this category." />
+                </th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                  vs Hayward
+                  <InfoTip text="How much cheaper AC's street price is vs Hayward's comparable. Positive = AC is lower." />
+                </th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                  vs Pentair
+                  <InfoTip text="How much cheaper AC's street price is vs Pentair's comparable. Positive = AC is lower." />
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.categories.map(cat => (
+                <tr key={cat.category} className="border-b last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-2 font-medium">{cat.category}</td>
+                  <td className="px-3 py-2 text-right text-muted-foreground">{cat.skuCount}</td>
+                  <td className="px-3 py-2 text-right">{fmtPct(cat.avgDealerMarginPct)}</td>
+                  <td className="px-3 py-2 text-right">
+                    {cat.avgAcVsHaywardPct !== null ? (
+                      <span className={cat.avgAcVsHaywardPct > 0 ? "text-emerald-600" : "text-red-500"}>
+                        {cat.avgAcVsHaywardPct > 0 ? "+" : ""}{(cat.avgAcVsHaywardPct * 100).toFixed(1)}%
+                      </span>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {cat.avgAcVsPentairPct !== null ? (
+                      <span className={cat.avgAcVsPentairPct > 0 ? "text-emerald-600" : "text-red-500"}>
+                        {cat.avgAcVsPentairPct > 0 ? "+" : ""}{(cat.avgAcVsPentairPct * 100).toFixed(1)}%
+                      </span>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* SKU-level table */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-muted/30 px-3 py-2 border-b flex items-center gap-3">
+          <span className="text-xs font-semibold">SKU Detail</span>
+          <input
+            className="ml-auto h-6 text-xs border rounded px-2 bg-background w-48"
+            placeholder="Search SKU…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+          />
+          <select
+            className="h-6 text-xs border rounded px-2 bg-background"
+            value={category}
+            onChange={e => { setCategory(e.target.value); setPage(1); }}
+          >
+            <option value="all">All categories</option>
+            {(categories ?? []).map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />Loading…
+          </div>
+        ) : !data || data.rows.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">No SKUs found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs min-w-[900px]">
+              <thead>
+                <tr className="border-b bg-muted/10">
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground sticky left-0 bg-background z-10">SKU</th>
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Category</th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    2025-26 Sales
+                    <InfoTip text="Total sales revenue for this SKU in the 2025-26 period." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    Hist Avg Price Paid
+                    <InfoTip text="Historical average price paid by customers. Note: may understate realized price by ~10.68% per Ian's finding #2." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    2027 Landed Cost
+                    <InfoTip text="Model landed cost at 2027 FOB + freight + tariffs." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    2027 Import List
+                    <InfoTip text="2027 import track list price from the Buy Side Matrix." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    T1 Net
+                    <InfoTip text="Tier 1 net price (after T1 discount). This is what a top-tier dealer pays." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    AC Street Price
+                    <InfoTip text="Asia Connection's current street / MSRP price for this SKU." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    Dealer Margin
+                    <InfoTip text="Dealer margin at T1 Net: (Street − T1 Net) ÷ Street. How much room a T1 dealer has between their cost and street." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    Hayward Comp
+                    <InfoTip text="Comparable Hayward model and its street price." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    vs Hayward
+                    <InfoTip text="How AC's street price compares to Hayward's. Positive % = AC is cheaper." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    Pentair Comp
+                    <InfoTip text="Comparable Pentair model and its street price." />
+                  </th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                    vs Pentair
+                    <InfoTip text="How AC's street price compares to Pentair's. Positive % = AC is cheaper." />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map(row => {
+                  const street = Number(row.ourStreetPrice);
+                  const t1net = Number(row.modelT1Net);
+                  const dealerMargin = street > 0 && t1net > 0 ? (street - t1net) / street : null;
+
+                  return (
+                    <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="px-3 py-2 font-mono font-medium sticky left-0 bg-background z-10">{row.skuCode}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{row.category ?? "—"}</td>
+                      <td className="px-3 py-2 text-right">
+                        {row.sales2025_26 ? `$${Number(row.sales2025_26).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right">{fmtPrice(row.histAvgPricePaid)}</td>
+                      <td className="px-3 py-2 text-right">{fmtPrice(row.modelLandedCost)}</td>
+                      <td className="px-3 py-2 text-right">{fmtPrice(row.modelImportList)}</td>
+                      <td className="px-3 py-2 text-right">{fmtPrice(row.modelT1Net)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{fmtPrice(row.ourStreetPrice)}</td>
+                      <td className="px-3 py-2 text-right">{fmtPct(dealerMargin)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div>{row.haywardComp ? <span className="text-muted-foreground text-[10px]">{row.haywardComp}</span> : "—"}</div>
+                        <div>{fmtPrice(row.haywardPrice)}</div>
+                      </td>
+                      <td className="px-3 py-2 text-right">{vsCompetitor(row.ourStreetPrice, row.haywardPrice)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div>{row.pentairComp ? <span className="text-muted-foreground text-[10px]">{row.pentairComp}</span> : "—"}</div>
+                        <div>{fmtPrice(row.pentairPrice)}</div>
+                      </td>
+                      <td className="px-3 py-2 text-right">{vsCompetitor(row.ourStreetPrice, row.pentairPrice)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {data && totalPages > 1 && (
+          <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground">
+            <span>{data.total} SKUs total</span>
+            <div className="flex gap-1">
+              <button
+                className="px-2 py-1 rounded border hover:bg-muted disabled:opacity-40"
+                disabled={page === 1}
+                onClick={() => setPage(p => p - 1)}
+              >Prev</button>
+              <span className="px-2 py-1">Page {page} of {totalPages}</span>
+              <button
+                className="px-2 py-1 rounded border hover:bg-muted disabled:opacity-40"
+                disabled={page === totalPages}
+                onClick={() => setPage(p => p + 1)}
+              >Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10px] text-muted-foreground">
+        Source: Ian Allena / IJA Solutions market price study, July 20, 2026. Top 48 pump/filter/heater SKUs.
+        Hayward and Pentair prices verified against distributor price lists. Note: historical avg price paid may
+        understate realized prices by ~10.68% (Finding #2 — Ian's corrected dataset pending).
+      </p>
+    </div>
+  );
+}
+
 // ─── Customer PNL Tab ─────────────────────────────────────────────────────────
 function CustomerPnlTab() {
   const { data: customers, isLoading: custLoading } = trpc.dealerPricing.getCustomers.useQuery();
@@ -793,6 +1070,9 @@ export default function SupplySideSettings() {
           <TabsTrigger value="snapshots" className="text-xs h-7 flex items-center gap-1.5">
             <Camera className="h-3.5 w-3.5" />Snapshots
           </TabsTrigger>
+          <TabsTrigger value="market" className="text-xs h-7 flex items-center gap-1.5">
+            <BarChart2 className="h-3.5 w-3.5" />Market Price Study
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="freight" className="mt-4">
@@ -806,6 +1086,9 @@ export default function SupplySideSettings() {
         </TabsContent>
         <TabsContent value="snapshots" className="mt-4">
           <SnapshotsTab />
+        </TabsContent>
+        <TabsContent value="market" className="mt-4">
+          <MarketPriceStudyTab />
         </TabsContent>
       </Tabs>
     </div>
