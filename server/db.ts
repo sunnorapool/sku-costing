@@ -137,17 +137,6 @@ export async function getSkuById(id: number) {
   return result[0] ?? null;
 }
 
-export async function getSkuByCode(skuCode: string) {
-  const db = await getDb();
-  if (!db) return null;
-  const result = await db
-    .select({ sku: skus, pricing: skuPricing })
-    .from(skus)
-    .leftJoin(skuPricing, eq(skus.id, skuPricing.skuId))
-    .where(eq(skus.sku, skuCode))
-    .limit(1);
-  return result[0] ?? null;
-}
 
 export async function createSku(
   skuData: InsertSku,
@@ -394,43 +383,6 @@ export async function getChannelPricesBySku(skuId: number): Promise<(ChannelPric
   return rows as any;
 }
 
-export async function getChannelPricesByChannel(
-  channelId: number,
-  filters?: { search?: string; productGroup?: string; limit?: number; offset?: number }
-) {
-  const db = await getDb();
-  if (!db) return { items: [], total: 0 };
-
-  const conditions = [eq(channelPrices.channelId, channelId)];
-  const skuConditions = [];
-  if (filters?.search) {
-    skuConditions.push(or(like(skus.sku, `%${filters.search}%`), like(skus.description, `%${filters.search}%`)));
-  }
-  if (filters?.productGroup) {
-    skuConditions.push(eq(skus.productGroup, filters.productGroup));
-  }
-
-  const baseQuery = db
-    .select({
-      channelPrice: channelPrices,
-      sku: skus,
-      pricing: skuPricing,
-    })
-    .from(channelPrices)
-    .innerJoin(skus, eq(channelPrices.skuId, skus.id))
-    .leftJoin(skuPricing, eq(skuPricing.skuId, skus.id))
-    .where(and(...conditions, ...(skuConditions.length ? skuConditions : [])));
-
-  const limit = filters?.limit ?? 100;
-  const offset = filters?.offset ?? 0;
-  const items = await baseQuery.limit(limit).offset(offset).orderBy(skus.sku);
-  const [countRow] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(channelPrices)
-    .innerJoin(skus, eq(channelPrices.skuId, skus.id))
-    .where(and(...conditions, ...(skuConditions.length ? skuConditions : [])));
-  return { items, total: Number(countRow?.count ?? 0) };
-}
 
 // Matrix: all SKUs (with pricing) + all channel prices for a given channel type
 export async function getChannelPricingMatrix(
