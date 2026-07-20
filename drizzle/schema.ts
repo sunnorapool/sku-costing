@@ -391,3 +391,50 @@ export const pricingLocks = mysqlTable("pricing_locks", {
 
 export type PricingLock = typeof pricingLocks.$inferSelect;
 export type InsertPricingLock = typeof pricingLocks.$inferInsert;
+
+// HTS tariff rate lookup table — one row per HTS code
+export const htsTariffRates = mysqlTable("hts_tariff_rates", {
+  id: int("id").autoincrement().primaryKey(),
+  htsCode: varchar("hts_code", { length: 32 }).notNull().unique(),
+  description: varchar("description", { length: 255 }),
+  baseDutyPct: decimal("base_duty_pct", { precision: 8, scale: 4 }).default("0"), // standard HTS duty %
+  sec301Pct: decimal("sec301_pct", { precision: 8, scale: 4 }).default("0"),      // Section 301 China tariff %
+  sec232Pct: decimal("sec232_pct", { precision: 8, scale: 4 }).default("0"),      // Section 232 steel/aluminum %
+  sec122Pct: decimal("sec122_pct", { precision: 8, scale: 4 }).default("0"),      // Section 122 additional tariff %
+  sourceUrl: varchar("source_url", { length: 512 }),                              // link to USTR/CBP source
+  notes: text("notes"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type HtsTariffRate = typeof htsTariffRates.$inferSelect;
+export type InsertHtsTariffRate = typeof htsTariffRates.$inferInsert;
+
+// Freight & import config — all rate inputs for the landed cost formula
+// Each row is a named config key with its value, formula description, and source
+export const freightConfig = mysqlTable("freight_config", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 64 }).notNull().unique(),
+  value: decimal("value", { precision: 12, scale: 6 }).notNull(),
+  label: varchar("label", { length: 128 }).notNull(),
+  unit: varchar("unit", { length: 32 }),           // e.g. "% of FOB", "$/cu ft", "$/container"
+  formulaNote: text("formula_note"),               // human-readable formula explanation
+  sourceNote: text("source_note"),                 // where this number came from
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FreightConfig = typeof freightConfig.$inferSelect;
+export type InsertFreightConfig = typeof freightConfig.$inferInsert;
+
+// Price snapshots — point-in-time freeze of supply side or buy side computed data
+export const priceSnapshots = mysqlTable("price_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  label: varchar("label", { length: 128 }).notNull(),
+  scope: mysqlEnum("scope", ["supply", "buy"]).notNull(),
+  snapshotData: text("snapshot_data").notNull(), // JSON blob of computed prices at time of snapshot
+  skuCount: int("sku_count").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PriceSnapshot = typeof priceSnapshots.$inferSelect;
+export type InsertPriceSnapshot = typeof priceSnapshots.$inferInsert;

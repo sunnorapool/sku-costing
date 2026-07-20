@@ -245,3 +245,32 @@
 - [x] Locks tab: password-protect supply or buy side independently
 - [x] Sidebar nav entry: 2027 Dealer Pricing
 - [x] Run tests (21 passing) and save checkpoint
+
+## Phase 14 — Dan's Feature Requests + Full UI Pass
+
+### DB Schema
+- [ ] DB: `hts_tariff_rates` table (hts_code, description, base_duty_pct, sec301_pct, sec232_pct, sec122_pct, source_url)
+- [ ] DB: `freight_config` table (key, value, label, formula_note, source_note)
+- [ ] DB: `price_snapshots` table (id, label, scope, snapshot_data JSON, created_at)
+- [ ] Run migration
+
+### Backend
+- [ ] tRPC: hts.list / hts.upsert / hts.delete
+- [ ] tRPC: freightConfig.get / freightConfig.update
+- [ ] tRPC: landedCost.compute — full breakdown for a SKU
+- [ ] tRPC: customerHistory.get — per-customer PNL analysis
+- [ ] tRPC: snapshots.save / snapshots.list / snapshots.restore
+
+### UI Pass — Nomenclature & Layout
+- [ ] SKUDetail: rename "FOB 26 Costing" → "2026 FOB Cost", "Factory Cost" → "Factory/FOB Cost", "Tariff %" → "Import Tariff Rate", "Duty %" → "Base Duty Rate", "Load %" → "Origin Load %", "BD License Fee %" → "B&D Royalty %", "Asia Margin %" → "Supplier Margin %", "Inc 24→25 %" → "Price Increase 2024→2025"
+- [ ] SKUDetail: consolidate all cost components into one "Import Cost Breakdown" card with formula tooltips
+- [ ] SKUDetail: add HoverCard tooltip to every cost row label (formula + source)
+- [ ] DealerPricing: rename "Imp Net L1/L2/L3" → "Import Net Tier 1/2/3", "Dom Net" → "Domestic Net", "Imp Kept Mgn" → "Import Kept Margin"
+- [ ] SKUTable: rename fob2027 column headers to plain English
+
+### New Feature Pages/Tabs
+- [ ] New page: /hts-codes — HTS tariff rate table, editable, with source link column
+- [ ] New panel in Dealer Pricing: Freight & Import Config — all freight rate inputs in one place with formula tooltips
+- [ ] New tab in Dealer Pricing: Customer History — per-customer PNL analysis
+- [ ] New tab in Dealer Pricing: Snapshots — save/restore supply or buy side data snapshots
+- [ ] SKUTable: case-pack sanity flag — orange badge when per-unit import net looks like a case-pack price

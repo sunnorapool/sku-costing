@@ -57,6 +57,13 @@
       "when": 1784555631580,
       "tag": "0007_amusing_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1784560542366,
+      "tag": "0008_broad_talisman",
+      "breakpoints": true
     }
   ]
 }

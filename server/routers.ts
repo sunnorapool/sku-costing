@@ -30,6 +30,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { dealerPricingRouter } from "./routers/dealerPricing";
+import { supplySideRouter } from "./routers/supplySide";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -122,6 +123,7 @@ const skuSchema = z.object({
 export const appRouter = router({
   system: systemRouter,
   dealerPricing: dealerPricingRouter,
+  supplySide: supplySideRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
