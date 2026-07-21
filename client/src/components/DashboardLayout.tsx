@@ -20,20 +20,17 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, PanelLeft, History, Upload, Waves, DollarSign, AlertTriangle, Search, ShoppingCart, Truck } from "lucide-react";
+import { LayoutDashboard, PanelLeft, Waves, Package, Settings, Users, BarChart2, Truck } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "SKU Costing", path: "/" },
-  { icon: DollarSign, label: "Channel Pricing", path: "/channel-pricing" },
-  { icon: ShoppingCart, label: "2027 Dealer Pricing", path: "/dealer-pricing" },
-  { icon: Truck, label: "Supply Side Settings", path: "/supply-side" },
-  { icon: AlertTriangle, label: "Margin Alerts", path: "/alerts" },
-  { icon: Search, label: "Model Lookup", path: "/lookup" },
-  { icon: History, label: "Version History", path: "/history" },
-  { icon: Upload, label: "Import / Export", path: "/import-export" },
+  { icon: LayoutDashboard, label: "SKU Catalog", path: "/" },
+  { icon: Truck, label: "Supply Side", path: "/supply-side" },
+  { icon: Settings, label: "Buy Side", path: "/buy-side" },
+  { icon: Users, label: "Dealers", path: "/dealers" },
+  { icon: BarChart2, label: "Reports", path: "/reports" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

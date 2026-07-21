@@ -5,14 +5,11 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import SKUTable from "./pages/SKUTable";
-import VersionHistory from "./pages/VersionHistory";
-import ImportExport from "./pages/ImportExport";
-import ChannelPricing from "./pages/ChannelPricing";
 import SKUDetail from "./pages/SKUDetail";
-import MarginAlerts from "./pages/MarginAlerts";
-import ModelLookup from "./pages/ModelLookup";
-import DealerPricing from "./pages/DealerPricing";
-import SupplySideSettings from "./pages/SupplySideSettings";
+import SupplySide from "./pages/SupplySide";
+import BuySide from "./pages/BuySide";
+import Dealers from "./pages/Dealers";
+import Reports from "./pages/Reports";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -20,13 +17,10 @@ function Router() {
     <DashboardLayout>
       <Switch>
         <Route path={"/"} component={SKUTable} />
-        <Route path={"/history"} component={VersionHistory} />
-        <Route path={"/import-export"} component={ImportExport} />
-        <Route path={"/channel-pricing"} component={ChannelPricing} />
-        <Route path={"/alerts"} component={MarginAlerts} />
-        <Route path={"/lookup"} component={ModelLookup} />
-        <Route path={"/dealer-pricing"} component={DealerPricing} />
-        <Route path={"/supply-side"} component={SupplySideSettings} />
+        <Route path={"/supply-side"} component={SupplySide} />
+        <Route path={"/buy-side"} component={BuySide} />
+        <Route path={"/dealers"} component={Dealers} />
+        <Route path={"/reports"} component={Reports} />
         <Route path={"/sku/:id"}>
           {(params) => <SKUDetail skuId={Number(params.id)} />}
         </Route>

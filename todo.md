@@ -344,3 +344,56 @@
 - [x] Customer Sales History drill-down dialog added to Customers tab (click Sales History on any customer)
 - [x] getCustomerSkuSales + getCustomerSalesSummary tRPC procedures added
 - [x] 72 tests passing, 0 TypeScript errors
+
+## Phase 20 — Full UI Redesign (Dan's 6 Principles)
+
+### Navigation restructure
+- [ ] Rename nav: SKU Catalog / Supply Side / Buy Side / Dealers / Reports
+- [ ] Move customer PNL from Supply Side → Dealers
+- [ ] Move Market Price Study → Reports
+- [ ] Move Margin Alerts → Reports
+- [ ] Move Version History → Reports
+- [ ] Move Import/Export → Reports
+- [ ] Move Model Lookup → Reports
+- [ ] Fold Channel Pricing into Dealers as sub-tab
+- [ ] Move all margin/tier/royalty inputs → Buy Side page
+- [ ] Move all freight/tariff/HTS inputs → Supply Side page (stripped)
+
+### Supply Side page (inputs only)
+- [ ] Ocean freight rates, drayage, destination fees, entry fee, import deposit
+- [ ] Tariff scenario selector
+- [ ] HTS tariff rates table
+- [ ] MPF config
+- [ ] Hover tooltips on every field
+- [ ] Remove all customer PNL / market study content
+
+### Buy Side page (inputs only)
+- [ ] Tier definitions table (T1/T2/T3 with thresholds)
+- [ ] Dealer tier assignments (editable)
+- [ ] Margin rules table (global → category → vendor → SKU)
+- [ ] B&D royalty rules table
+- [ ] Hover tooltips on every field
+
+### Dealers page
+- [ ] Dealer list with tier filter, search, total sales
+- [ ] Dealer detail: purchase history tab (SKU, brand, supplier, qty, avg price, total sales, by year)
+- [ ] Dealer detail: Build 2027 Price List tab (filter by brand/category/SKU)
+- [ ] Linear output: SKU | Description | Landed Cost | Import List | Tier Discount | Net Price | Override
+- [ ] Override specific lines, export CSV
+- [ ] Channel pricing sub-tab (online/wholesale matrix)
+- [ ] Hover tooltips on all output columns
+
+### SKU Catalog page
+- [ ] SQL-only data, remove any non-SQL references
+- [ ] Linear column grouping: SKU Info | Cost Data | Pricing | Status
+- [ ] Hover tooltip on every column header (plain English)
+- [ ] Clean column headers (no unexplained abbreviations)
+
+### Reports page
+- [ ] Sub-tabs: Market Price Study | Margin Alerts | Version History | Import/Export | Model Lookup
+- [ ] Minimalist layout
+
+### Global
+- [ ] Every column header has a hover tooltip
+- [ ] No jargon or unexplained abbreviations
+- [ ] Run tests and save checkpoint
