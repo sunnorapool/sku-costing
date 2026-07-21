@@ -150,6 +150,7 @@ export const appRouter = router({
           limit: z.number().min(1).max(500).optional(),
           offset: z.number().min(0).optional(),
           ids: z.array(z.number()).optional(),
+          active2027Only: z.boolean().optional(),
         }).optional()
       )
       .query(async ({ input }) => {

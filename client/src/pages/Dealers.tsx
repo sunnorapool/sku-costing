@@ -292,10 +292,18 @@ function DealerDetail({ dealerId, dealerName, dealerTier, onBack }: {
 function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; dealerName: string }) {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [brandFilter, setBrandFilter] = useState("all");
 
   const { data: summary } = trpc.dealerPricing.getCustomerSalesSummary.useQuery({ customerId: dealerId });
+  // Load all rows once (no brand filter) to build the brand dropdown
+  const { data: allData } = trpc.dealerPricing.getCustomerSkuSales.useQuery(
+    { customerId: dealerId, limit: 500, offset: 0 },
+    { enabled: true }
+  );
+  const allBrands = Array.from(new Set((allData?.rows ?? []).map((r) => r.supplier).filter((s): s is string => !!s))).sort();
+
   const { data, isLoading } = trpc.dealerPricing.getCustomerSkuSales.useQuery(
-    { customerId: dealerId, search, limit: 300, offset: 0 },
+    { customerId: dealerId, search, brand: brandFilter !== "all" ? brandFilter : undefined, limit: 300, offset: 0 },
     { enabled: true }
   );
 
@@ -334,20 +342,29 @@ function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; deale
         </div>
       )}
 
-      {/* Search + export */}
-      <div className="flex gap-2">
-        <div className="relative flex-1 max-w-xs">
+      {/* Search + filters + export */}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-8 h-8 text-xs"
+            className="pl-8 h-8 text-xs w-52"
             placeholder="Search SKU or description…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput)}
           />
         </div>
+        <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v)}>
+          <SelectTrigger className="h-8 text-xs w-44">
+            <SelectValue placeholder="All brands" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands / Suppliers</SelectItem>
+            {allBrands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setSearch(searchInput)}>Search</Button>
-        {search && <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setSearch(""); setSearchInput(""); }}>Clear</Button>}
+        {(search || brandFilter !== "all") && <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setSearch(""); setSearchInput(""); setBrandFilter("all"); }}>Clear</Button>}
         <Button size="sm" variant="outline" className="h-8 text-xs ml-auto" onClick={exportCsv}>
           <Download className="h-3.5 w-3.5 mr-1" />Export CSV
         </Button>
@@ -369,6 +386,10 @@ function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; deale
                 </TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>
+                  Brand / Supplier
+                  <InfoTip text="The brand or supplier this SKU is sourced from (e.g. Splash, Darlly, JT, PoolMax)." />
+                </TableHead>
+                <TableHead>
                   Category
                   <InfoTip text="Product group / category from the item master." />
                 </TableHead>
@@ -389,7 +410,7 @@ function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; deale
             <TableBody>
               {(data?.rows ?? []).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-sm">
                     No purchase history found
                   </TableCell>
                 </TableRow>
@@ -397,7 +418,8 @@ function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; deale
                 (data?.rows ?? []).map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs">{r.skuCode}</TableCell>
-                    <TableCell className="text-sm max-w-[260px] truncate">{r.description ?? "—"}</TableCell>
+                    <TableCell className="text-sm max-w-[220px] truncate">{r.description ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.supplier ?? "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.productGroup ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm">{Number(r.totalQty ?? 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right text-sm">{fmt$(r.totalSalesAmt, 0)}</TableCell>

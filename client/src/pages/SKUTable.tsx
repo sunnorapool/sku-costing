@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Edit2,
   Filter,
+  HelpCircle,
   Loader2,
   Package,
   Plus,
@@ -22,10 +23,29 @@ import {
   Zap,
   Eye,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import AddSKUDialog from "@/components/AddSKUDialog";
 import EditSKUDialog from "@/components/EditSKUDialog";
+
+function ColTip({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-0.5 cursor-help">
+            {children}
+            <HelpCircle className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SkuRow = {
@@ -53,6 +73,9 @@ type SkuRow = {
     pcsPerCarton: string | null;
     packingType: string | null;
     cartonCount: number | null;
+    fob2027Price: string | null;
+    fob2027Status: "confirmed" | "placeholder" | "missing" | null;
+    fob2027Source: string | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -494,6 +517,9 @@ function ColGroupHeader({ isAdmin }: { isAdmin: boolean }) {
       <th colSpan={7} className="px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider col-group-pricing border-b border-l">
         Pricing
       </th>
+      <th colSpan={2} className="px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider bg-emerald-50/80 text-emerald-700 border-b border-l">
+        2027 FOB
+      </th>
       <th colSpan={7} className="px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider col-group-costs border-b border-l">
         Costs
       </th>
@@ -532,6 +558,8 @@ export default function SKUTable() {
   const [supplierFilter, setSupplierFilter] = useState<string>("");
   const [page, setPage] = useState(0);
   const [aiFilterIds, setAiFilterIds] = useState<number[] | null>(null);
+  const [active2027Only, setActive2027Only] = useState(true);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const [cartonDetailSkuId, setCartonDetailSkuId] = useState<number | null>(null);
   const [cartonDetailSkuLabel, setCartonDetailSkuLabel] = useState<string>("");
 
@@ -565,6 +593,7 @@ export default function SKUTable() {
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
     ids: aiFilterIds ?? undefined,
+    active2027Only: active2027Only || undefined,
   });
 
   const { data: productGroups } = trpc.skus.productGroups.useQuery();
@@ -593,12 +622,14 @@ export default function SKUTable() {
 
   return (
     <div className="flex flex-col h-full gap-0">
-      {/* AI Prompt Panel */}
-      <AIPromptPanel
-        onApplied={handleRefresh}
-        onFilter={(ids) => { setAiFilterIds(ids); setPage(0); }}
-        onClearFilter={() => { setAiFilterIds(null); setPage(0); }}
-      />
+      {/* AI Prompt Panel — collapsible */}
+      {showAiPanel && (
+        <AIPromptPanel
+          onApplied={handleRefresh}
+          onFilter={(ids) => { setAiFilterIds(ids); setPage(0); }}
+          onClearFilter={() => { setAiFilterIds(null); setPage(0); }}
+        />
+      )}
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -682,6 +713,30 @@ export default function SKUTable() {
           ))}
         </div>
 
+        {/* 2027 Active Only toggle */}
+        <button
+          onClick={() => { setActive2027Only(!active2027Only); setPage(0); }}
+          className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
+            active2027Only
+              ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
+              : "bg-white text-muted-foreground border-border hover:bg-muted/50"
+          }`}
+          title="When on, shows only SKUs that have a 2027 FOB price (confirmed or placeholder). Turn off to see the full catalog."
+        >
+          {active2027Only ? "2027 Active" : "All SKUs"}
+        </button>
+
+        {/* AI assistant toggle */}
+        <Button
+          variant="outline" size="sm"
+          className={`h-9 px-3 bg-white ${ showAiPanel ? "border-primary text-primary" : "" }`}
+          onClick={() => setShowAiPanel(!showAiPanel)}
+          title="AI Pricing Assistant — ask questions or apply bulk changes"
+        >
+          <Bot className="h-3.5 w-3.5 mr-1.5" />
+          AI
+        </Button>
+
         <Button size="sm" className="h-9 ml-auto" onClick={() => setAddingNew(true)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           Add SKU
@@ -730,53 +785,74 @@ export default function SKUTable() {
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-r min-w-[90px] bg-slate-50">SKU</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-r min-w-[260px] bg-slate-50">Description</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground min-w-[130px] bg-slate-50">Product Group</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground min-w-[70px] bg-slate-50">Var 1</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground min-w-[70px] bg-slate-50">Var 2</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground min-w-[70px] bg-slate-50">
+                  <ColTip text="Variant 1 — primary spec for this SKU (e.g. HP rating for pumps, BTU for heaters, size for filters).">Spec 1</ColTip>
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground min-w-[70px] bg-slate-50">
+                  <ColTip text="Variant 2 — secondary spec (e.g. speed setting, cord type, voltage).">Spec 2</ColTip>
+                </th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground min-w-[90px] bg-slate-50">Status</th>
                 {/* Pricing */}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[85px] bg-blue-50/60">SRP 2023</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-blue-50/60">SRP 2024</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-blue-50/60">MAP</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-blue-50/60">2024 Comps</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[115px] bg-blue-50/60">SRP 2024 AMZN</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-blue-50/60">Wholesale (Pool City)</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-blue-50/60">BD Wholesale Margin %</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[85px] bg-blue-50/60"><ColTip text="Suggested Retail Price 2023 — the manufacturer's recommended consumer selling price for the 2023 model year.">SRP 2023</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-blue-50/60"><ColTip text="Suggested Retail Price 2024 — the manufacturer's recommended consumer selling price for the 2024 model year.">SRP 2024</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-blue-50/60"><ColTip text="Minimum Advertised Price — the lowest price a dealer is allowed to advertise this product. Set by the manufacturer.">MAP</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-blue-50/60"><ColTip text="2024 Competitor Pricing — the price at which key competitors were selling this SKU in 2024, used as a market reference.">2024 Comps</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[115px] bg-blue-50/60"><ColTip text="Amazon SRP 2024 — the price this SKU was listed at on Amazon during 2024.">SRP 2024 AMZN</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-blue-50/60"><ColTip text="Pool City Wholesale Price — the price at which this SKU was offered to Pool City as a wholesale customer.">Wholesale (Pool City)</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-blue-50/60"><ColTip text="B&D Wholesale Margin % — the gross margin percentage on this SKU when sold at the Pool City wholesale price, relative to landed cost.">BD Wholesale Margin %</ColTip></th>
+                {/* 2027 FOB */}
+                <th className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 border-l min-w-[110px] bg-emerald-50/80">
+                  <ColTip text="2027 FOB Price — the factory price per unit for 2027, before ocean freight, tariffs, or any other costs are added. Source: confirmed supplier quote or placeholder estimate.">2027 FOB</ColTip>
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-emerald-700 min-w-[110px] bg-emerald-50/80">
+                  <ColTip text="2027 FOB Status — Confirmed means we have a signed or accepted supplier quote. Placeholder means we are using an estimate (last year's price or a rough projection). Missing means no cost data exists and this SKU cannot be priced.">2027 Status</ColTip>
+                </th>
                 {/* Costs */}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[105px] bg-amber-50/60">2026 FOB Cost</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[95px] bg-amber-50/60">Factory Cost</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-amber-50/60">PPTG 25 Wholesale</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[140px] bg-amber-50/60">BD Retail 24</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[140px] bg-amber-50/60">BD Retail 25</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60">Adjusted</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60">Price Increase 24→25</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[105px] bg-amber-50/60">
+                  <ColTip text="2026 FOB Cost — the factory price per unit we paid in 2026. Used as the cost basis for 2026 margin calculations and year-over-year comparisons.">2026 FOB Cost</ColTip>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[95px] bg-amber-50/60">
+                  <ColTip text="Factory Cost — the net factory price after any B&D supplier discounts or adjustments, before freight and duties.">Factory Cost</ColTip>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[130px] bg-amber-50/60"><ColTip text="PPTG 2025 Wholesale Price — the price at which Pool Parts To Go offered this SKU to wholesale customers in 2025.">PPTG 25 Wholesale</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[140px] bg-amber-50/60"><ColTip text="B&D Retail Price 2024 — the Black & Decker retail price for this SKU in 2024.">BD Retail 24</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[140px] bg-amber-50/60"><ColTip text="B&D Retail Price 2025 — the Black & Decker retail price for this SKU in 2025.">BD Retail 25</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60"><ColTip text="Adjusted Cost — the factory cost after any supplier adjustments, credits, or rebates have been applied.">Adjusted</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-amber-50/60"><ColTip text="Price Increase 2024 to 2025 — the percentage change in the B&D retail price from 2024 to 2025. Positive means the price went up.">Price Increase 24→25</ColTip></th>
                 {/* Margins */}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[95px] bg-emerald-50/60">BD Margin</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[95px] bg-emerald-50/60">BD Margin %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[105px] bg-emerald-50/60">Landed Cost</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[125px] bg-emerald-50/60">Landed + BD Fees</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-emerald-50/60">Margin</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[95px] bg-emerald-50/60"><ColTip text="B&D Gross Margin $ — the dollar margin on this SKU when sold at the B&D retail price, after subtracting landed cost.">BD Margin</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[95px] bg-emerald-50/60"><ColTip text="B&D Gross Margin % — the margin as a percentage of the B&D retail price. Formula: (Retail Price − Landed Cost) ÷ Retail Price.">BD Margin %</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[105px] bg-emerald-50/60">
+                  <ColTip text="Landed Cost — total cost to get the product to our US warehouse: FOB price + ocean freight + tariffs + duties + destination fees (drayage, port fees). This is what we actually pay before any markup.">Landed Cost</ColTip>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[125px] bg-emerald-50/60">
+                  <ColTip text="Landed Cost + B&D Fees — landed cost plus the B&D license fee (royalty) for Black & Decker branded SKUs. For non-B&D SKUs this equals landed cost.">Landed + BD Fees</ColTip>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-emerald-50/60">
+                  <ColTip text="Gross Margin — the dollar difference between our selling price and landed cost. Positive means we make money; negative means we lose money on this SKU.">Margin $</ColTip>
+                </th>
                 {/* Tariff & Duty */}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[80px] bg-orange-50/60">Tariff %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-orange-50/60">Tariff Amt</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-orange-50/60">Duty %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-orange-50/60">Duty Amt</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[80px] bg-orange-50/60"><ColTip text="Total Tariff Rate % — the combined US tariff rate for this SKU based on its HTS code. Includes Section 301 (China goods), Section 232 (steel/aluminum), and Section 122 where applicable.">Tariff %</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[90px] bg-orange-50/60"><ColTip text="Tariff Amount $ — the dollar amount of tariff per unit. Calculated as: FOB Price × Tariff %.">Tariff Amt</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-orange-50/60"><ColTip text="Customs Duty Rate % — the standard US import duty rate for this HTS code, separate from Section 301/232 tariffs.">Duty %</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-orange-50/60"><ColTip text="Customs Duty Amount $ — the dollar amount of standard import duty per unit. Calculated as: FOB Price × Duty %.">Duty Amt</ColTip></th>
                 {/* Freight & Fees */}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[85px] bg-purple-50/60">Freight</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-purple-50/60">Freight Alt</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60">Load %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[115px] bg-purple-50/60">B&D Royalty %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[100px] bg-purple-50/60">Supplier Margin %</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60">BD Fee</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground border-l min-w-[85px] bg-purple-50/60"><ColTip text="Ocean Freight $ — the per-unit cost to ship this SKU from the factory to our US warehouse, allocated by cubic volume (or weight for dense cargo).">Freight</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[85px] bg-purple-50/60"><ColTip text="Freight (Weight Basis) $ — per-unit freight cost using weight allocation. The higher of Freight and Freight Alt is used for dense/heavy items.">Freight Alt</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60"><ColTip text="Load % — this SKU's share of the total container volume. Used to allocate fixed container costs across all SKUs in the shipment.">Load %</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[115px] bg-purple-50/60"><ColTip text="B&D Royalty % — the license fee paid to Black & Decker as a percentage of the selling price, for B&D branded SKUs. 0% for non-B&D SKUs.">B&D Royalty %</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[100px] bg-purple-50/60"><ColTip text="Supplier Margin % — the gross margin the supplier (factory) earns on this SKU, based on their cost structure. Used for benchmarking and negotiation.">Supplier Margin %</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground min-w-[75px] bg-purple-50/60"><ColTip text="B&D License Fee $ — the dollar amount of the B&D royalty per unit. Calculated as: Selling Price × B&D Royalty %.">BD Fee</ColTip></th>
                 {/* Notes */}
                 <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground border-l min-w-[180px] bg-slate-50">Notes</th>
                 {/* Sourcing Info */}
-                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 border-l min-w-[110px] bg-teal-50/60">Supplier</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[110px] bg-teal-50/60">HTS Code</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[140px] bg-teal-50/60">Source Status</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[60px] bg-teal-50/60">B&amp;D?</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[80px] bg-teal-50/60">Packing</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-teal-700 min-w-[120px] bg-teal-50/60">Sales Qty YTD</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-teal-700 min-w-[120px] bg-teal-50/60">Sales Amt YTD</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 border-l min-w-[110px] bg-teal-50/60"><ColTip text="Supplier — the factory or vendor that manufactures this SKU (e.g. Splash, Darlly, JT, PoolMax).">Supplier</ColTip></th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[110px] bg-teal-50/60"><ColTip text="HTS Code — Harmonized Tariff Schedule code. This 10-digit code determines which US tariff rates apply when importing this product.">HTS Code</ColTip></th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[140px] bg-teal-50/60"><ColTip text="Source Status — state of the cost data. Confirmed = signed supplier quote. Placeholder = estimate. Missing = no cost data, cannot price. Needs packaging = carton dims required for freight.">Source Status</ColTip></th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[60px] bg-teal-50/60"><ColTip text="B&D — Yes if this SKU is sold under the Black & Decker brand license. B&D SKUs carry a royalty fee.">B&amp;D?</ColTip></th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-teal-700 min-w-[80px] bg-teal-50/60"><ColTip text="Packing — units per carton (inner pack quantity). Used with carton dimensions to calculate freight allocation.">Packing</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-teal-700 min-w-[120px] bg-teal-50/60"><ColTip text="Sales Qty YTD — total units sold year-to-date in the current fiscal year, from QuickBooks sales data.">Sales Qty YTD</ColTip></th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-teal-700 min-w-[120px] bg-teal-50/60"><ColTip text="Sales Amount YTD — total dollar revenue year-to-date in the current fiscal year, from QuickBooks sales data.">Sales Amt YTD</ColTip></th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground border-l min-w-[80px] bg-slate-50">Actions</th>
               </tr>
             </thead>
@@ -822,6 +898,22 @@ export default function SKUTable() {
                   <td className="px-3 py-2 text-right text-xs tabular-nums">{fmt(row.pricing?.srp2024Amzn)}</td>
                   <td className="px-3 py-2 text-right text-xs tabular-nums">{fmt(row.pricing?.wholesalePoolCity)}</td>
                   <td className="px-3 py-2 text-right text-xs tabular-nums">{fmtPct(row.pricing?.bdWholesaleMarginPct)}</td>
+                  {/* 2027 FOB */}
+                  <td className="px-3 py-2 text-right text-xs border-l tabular-nums font-semibold text-emerald-700">
+                    {row.sku.fob2027Price ? fmt(row.sku.fob2027Price) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    {row.sku.fob2027Status === "confirmed" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">Confirmed</span>
+                    )}
+                    {row.sku.fob2027Status === "placeholder" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-50 text-amber-700 border border-amber-200 font-semibold">Placeholder</span>
+                    )}
+                    {row.sku.fob2027Status === "missing" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-red-50 text-red-600 border border-red-200 font-semibold">Missing</span>
+                    )}
+                    {!row.sku.fob2027Status && "—"}
+                  </td>
                   {/* Costs */}
                   <td className="px-3 py-2 text-right text-xs border-l tabular-nums">{fmt(row.pricing?.fob26Costing)}</td>
                   <td className="px-3 py-2 text-right text-xs tabular-nums">{fmt(row.pricing?.factoryCost)}</td>

@@ -61,6 +61,7 @@ export async function getSkuList(filters?: {
   limit?: number;
   offset?: number;
   ids?: number[];
+  active2027Only?: boolean;
 }) {
   const db = await getDb();
   if (!db) return { items: [], total: 0 };
@@ -97,6 +98,14 @@ export async function getSkuList(filters?: {
   }
   if ((filters as any)?.supplier) {
     conditions.push(eq(skus.supplier, (filters as any).supplier));
+  }
+  if (filters?.active2027Only) {
+    conditions.push(
+      or(
+        eq(skus.fob2027Status, "confirmed"),
+        eq(skus.fob2027Status, "placeholder")
+      )
+    );
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;

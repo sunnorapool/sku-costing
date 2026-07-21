@@ -397,3 +397,17 @@
 - [ ] Every column header has a hover tooltip
 - [ ] No jargon or unexplained abbreviations
 - [ ] Run tests and save checkpoint
+
+## Phase 21 — Pre-emptive UX Fixes (Dan feedback prevention)
+
+- [ ] Dealers: brand filter shown before SKU list loads (filter bar at top: Brand, Category, Tier)
+- [ ] Dealers: 2026 Avg Price Paid column next to 2027 Proposed Price column (side-by-side comparison)
+- [ ] Dealers: export button that produces a clean one-page price sheet CSV for the dealer
+- [ ] Dealers: show BLOCKED/Placeholder badge on SKUs with missing 2027 cost
+- [ ] SKU Catalog: "2027 Active Only" toggle — default ON, hides catalog-only SKUs with no FOB price
+- [ ] SKU Catalog: rename Var 1/Var 2 to BTU Rating / Speed with tooltip explaining what they are
+- [ ] SKU Catalog: add 2027 FOB Price and 2027 Status columns to the default view
+- [ ] Column tooltips: SKU Catalog — SKU, Description, Product Group, Status, FOB Status, Cost Basis
+- [ ] Column tooltips: Dealers — Cost Basis, Import List, Tier Discount, Net Price, 2026 Avg Price Paid
+- [ ] Column tooltips: Buy Side — Import Margin, Domestic Margin, Royalty, Lock Section
+- [ ] Remove AI Pricing Assistant box from SKU Catalog (or move it to a less prominent position)

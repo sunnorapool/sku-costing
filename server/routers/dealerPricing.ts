@@ -1024,6 +1024,7 @@ export const dealerPricingRouter = router({
       z.object({
         customerId: z.number(),
         search: z.string().optional(),
+        brand: z.string().optional(),
         limit: z.number().int().min(1).max(500).default(200),
         offset: z.number().int().min(0).default(0),
       })
@@ -1041,12 +1042,16 @@ export const dealerPricingRouter = router({
           )!
         );
       }
+      if (input.brand) {
+        conditions.push(like(skus.supplier, `%${input.brand}%`));
+      }
       const rows = await db
         .select({
           id: customerSkuSales.id,
           skuCode: customerSkuSales.skuCode,
           description: skus.description,
           productGroup: skus.productGroup,
+          supplier: skus.supplier,
           totalQty: customerSkuSales.totalQty,
           totalSalesAmt: customerSkuSales.totalSalesAmt,
           avgRealizedPrice: customerSkuSales.avgRealizedPrice,
@@ -1061,6 +1066,7 @@ export const dealerPricingRouter = router({
       const [{ count }] = await db
         .select({ count: sql<number>`COUNT(*)` })
         .from(customerSkuSales)
+        .leftJoin(skus, eq(customerSkuSales.skuId, skus.id))
         .where(and(...conditions));
       return { rows, total: Number(count) };
     }),
