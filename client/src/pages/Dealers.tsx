@@ -236,7 +236,7 @@ function DealerList({ onSelect }: { onSelect: (id: number, name: string, tier: n
 
 // ─── Dealer Detail ────────────────────────────────────────────────────────────
 
-type DealerView = "history" | "pricing";
+type DealerView = "history" | "comparison" | "pricing";
 
 function DealerDetail({ dealerId, dealerName, dealerTier, onBack }: {
   dealerId: number;
@@ -265,6 +265,7 @@ function DealerDetail({ dealerId, dealerName, dealerTier, onBack }: {
       <div className="flex gap-1 border-b pb-0">
         {[
           { key: "history" as DealerView, label: "Purchase History" },
+          { key: "comparison" as DealerView, label: "2026 vs 2027" },
           { key: "pricing" as DealerView, label: "2027 Price List" },
         ].map(({ key, label }) => (
           <button
@@ -282,7 +283,221 @@ function DealerDetail({ dealerId, dealerName, dealerTier, onBack }: {
       </div>
 
       {view === "history" && <PurchaseHistoryView dealerId={dealerId} dealerName={dealerName} />}
+      {view === "comparison" && <ComparisonView dealerId={dealerId} dealerName={dealerName} dealerTier={dealerTier} />}
       {view === "pricing" && <PriceListBuilder dealerId={dealerId} dealerName={dealerName} dealerTier={dealerTier} />}
+    </div>
+  );
+}
+
+// ─── 2026 vs 2027 Comparison ────────────────────────────────────────────────
+
+function ComparisonView({ dealerId, dealerName, dealerTier }: {
+  dealerId: number;
+  dealerName: string;
+  dealerTier: number;
+}) {
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [brandFilter, setBrandFilter] = useState("all");
+
+  // 2025–26 purchase history
+  const { data: histData, isLoading: histLoading } = trpc.dealerPricing.getCustomerSkuSales.useQuery(
+    { customerId: dealerId, search, brand: brandFilter !== "all" ? brandFilter : undefined, limit: 500, offset: 0 },
+    { enabled: true }
+  );
+
+  // 2027 proposed pricing for the same dealer
+  const { data: pricingData, isLoading: pricingLoading } = trpc.dealerPricing.getBuySideMatrix.useQuery({
+    page: 1,
+    pageSize: 500,
+    search: search || undefined,
+    brand: brandFilter !== "all" ? brandFilter : undefined,
+    customerId: dealerId,
+  });
+
+  const allBrands = Array.from(new Set(
+    (histData?.rows ?? []).map((r) => r.supplier).filter((s): s is string => !!s)
+  )).sort();
+
+  // Build a pricing lookup map: skuCode → pricing row
+  const pricingMap = new Map((pricingData?.rows ?? []).map((r) => [r.sku, r]));
+
+  // Only show SKUs that appear in history (dealer actually bought them)
+  const mergedSkus = (histData?.rows ?? []).map((h) => ({
+    skuCode: h.skuCode,
+    description: h.description,
+    supplier: h.supplier,
+    productGroup: h.productGroup,
+    totalQty: h.totalQty,
+    totalSalesAmt: h.totalSalesAmt,
+    avgRealizedPrice: h.avgRealizedPrice,
+    pricing: pricingMap.get(h.skuCode) ?? null,
+  }));
+
+  const isLoading = histLoading || pricingLoading;
+
+  function exportCsv() {
+    const header = "SKU,Description,Brand/Supplier,Category,2025-26 Qty,2025-26 Avg Price Paid,2025-26 Total Sales,2027 Landed Cost,2027 Import List,2027 Net Price,FOB Status";
+    const rows = mergedSkus.map((r) => {
+      const cp = r.pricing?.customerPrices?.[0];
+      return [
+        r.skuCode,
+        `"${(r.description ?? "").replace(/"/g, '""')}"`,
+        r.supplier ?? "",
+        r.productGroup ?? "",
+        r.totalQty ?? 0,
+        r.avgRealizedPrice ?? "",
+        r.totalSalesAmt ?? "",
+        r.pricing?.landedCost ?? "",
+        r.pricing?.importList ?? "",
+        cp?.importNet ?? "",
+        r.pricing?.fob2027Status ?? "",
+      ].join(",");
+    });
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${dealerName.replace(/\s+/g, "_")}_2026_vs_2027.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between">
+        <p className="text-xs text-muted-foreground">
+          SKUs <strong>{dealerName}</strong> purchased in 2025–26, with their 2027 proposed pricing alongside.
+          Only SKUs with purchase history are shown.
+        </p>
+        <Button size="sm" variant="outline" className="h-8 text-xs shrink-0" onClick={exportCsv}>
+          <Download className="h-3.5 w-3.5 mr-1" />Export CSV
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            className="pl-8 h-8 text-xs"
+            placeholder="Search SKU or description…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput)}
+          />
+        </div>
+        <Select value={brandFilter} onValueChange={setBrandFilter}>
+          <SelectTrigger className="h-8 text-xs w-40">
+            <SelectValue placeholder="All Brands" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands</SelectItem>
+            {allBrands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground self-center">{mergedSkus.length} SKUs</span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-8 text-muted-foreground text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-28">SKU</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>
+                  Brand / Supplier
+                  <InfoTip text="The brand or supplier this SKU is sourced from." />
+                </TableHead>
+                <TableHead className="text-right bg-muted/30">
+                  2025–26 Qty
+                  <InfoTip text="Total units purchased by this dealer in the 2025–26 period." />
+                </TableHead>
+                <TableHead className="text-right bg-muted/30">
+                  2025–26 Avg Price
+                  <InfoTip text="Average price this dealer actually paid per unit in 2025–26 (realized price from QuickBooks)." />
+                </TableHead>
+                <TableHead className="text-right bg-muted/30">
+                  2025–26 Total Sales
+                  <InfoTip text="Total dollar amount purchased by this dealer in 2025–26." />
+                </TableHead>
+                <TableHead className="text-right">
+                  2027 Landed Cost
+                  <InfoTip text="Total cost to land this SKU in the US warehouse in 2027 (FOB + tariffs + freight). This is our cost, not the price." />
+                </TableHead>
+                <TableHead className="text-right">
+                  2027 Import List
+                  <InfoTip text="The 2027 import-track list price. Formula: Landed Cost ÷ (1 − Margin%). Price before dealer discount." />
+                </TableHead>
+                <TableHead className="text-right">
+                  2027 {tierLabel(dealerTier)} Net
+                  <InfoTip text={`The 2027 net price for ${dealerName} after their ${tierLabel(dealerTier)} tier discount. This is what you charge them.`} />
+                </TableHead>
+                <TableHead>
+                  FOB Status
+                  <InfoTip text="Whether the 2027 factory price is confirmed, a placeholder estimate, or missing." />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mergedSkus.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-sm">
+                    No purchase history found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                mergedSkus.map((r) => {
+                  const cp = r.pricing?.customerPrices?.[0];
+                  const isBlocked = r.pricing?.isBlocked;
+                  const fobStatus = r.pricing?.fob2027Status;
+                  return (
+                    <TableRow key={r.skuCode}>
+                      <TableCell className="font-mono text-xs">{r.skuCode}</TableCell>
+                      <TableCell className="text-sm max-w-[200px] truncate">{r.description ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.supplier ?? "—"}</TableCell>
+                      <TableCell className="text-right text-sm bg-muted/20">{r.totalQty?.toLocaleString() ?? "—"}</TableCell>
+                      <TableCell className="text-right text-sm font-mono bg-muted/20">{fmt$(r.avgRealizedPrice)}</TableCell>
+                      <TableCell className="text-right text-sm font-mono bg-muted/20">{fmt$(r.totalSalesAmt, 0)}</TableCell>
+                      <TableCell className="text-right text-sm font-mono">
+                        {isBlocked ? <span className="text-muted-foreground">—</span> : fmt$(r.pricing?.landedCost)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-mono">
+                        {isBlocked ? <span className="text-muted-foreground">—</span> : fmt$(r.pricing?.importList)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-mono">
+                        {isBlocked ? (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">BLOCKED</Badge>
+                        ) : cp?.importNet != null ? (
+                          fmt$(cp.importNet)
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {fobStatus === "confirmed" ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600">Confirmed</Badge>
+                        ) : fobStatus === "placeholder" ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600">Placeholder</Badge>
+                        ) : r.pricing == null ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">No 2027 data</Badge>
+                        ) : (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Missing</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

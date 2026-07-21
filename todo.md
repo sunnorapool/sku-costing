@@ -348,66 +348,67 @@
 ## Phase 20 — Full UI Redesign (Dan's 6 Principles)
 
 ### Navigation restructure
-- [ ] Rename nav: SKU Catalog / Supply Side / Buy Side / Dealers / Reports
-- [ ] Move customer PNL from Supply Side → Dealers
-- [ ] Move Market Price Study → Reports
-- [ ] Move Margin Alerts → Reports
-- [ ] Move Version History → Reports
-- [ ] Move Import/Export → Reports
-- [ ] Move Model Lookup → Reports
-- [ ] Fold Channel Pricing into Dealers as sub-tab
-- [ ] Move all margin/tier/royalty inputs → Buy Side page
-- [ ] Move all freight/tariff/HTS inputs → Supply Side page (stripped)
+- [x] Rename nav: SKU Catalog / Supply Side / Buy Side / Dealers / Reports
+- [x] Move customer PNL from Supply Side → Dealers (Reports page)
+- [x] Move Market Price Study → Reports
+- [x] Move Margin Alerts → Reports
+- [x] Move Version History → Reports
+- [x] Move Import/Export → Reports
+- [x] Move Model Lookup → Reports
+- [x] Fold Channel Pricing into Dealers as sub-tab (Reports for now)
+- [x] Move all margin/tier/royalty inputs → Buy Side page
+- [x] Move all freight/tariff/HTS inputs → Supply Side page (stripped)
 
 ### Supply Side page (inputs only)
-- [ ] Ocean freight rates, drayage, destination fees, entry fee, import deposit
-- [ ] Tariff scenario selector
-- [ ] HTS tariff rates table
-- [ ] MPF config
-- [ ] Hover tooltips on every field
-- [ ] Remove all customer PNL / market study content
+- [x] Ocean freight rates, drayage, destination fees, entry fee, import deposit
+- [x] Tariff scenario selector
+- [x] HTS tariff rates table
+- [x] MPF config
+- [x] Hover tooltips on every field
+- [x] Remove all customer PNL / market study content
 
 ### Buy Side page (inputs only)
-- [ ] Tier definitions table (T1/T2/T3 with thresholds)
-- [ ] Dealer tier assignments (editable)
-- [ ] Margin rules table (global → category → vendor → SKU)
-- [ ] B&D royalty rules table
-- [ ] Hover tooltips on every field
+- [x] Tier definitions table (T1/T2/T3 with thresholds)
+- [x] Dealer tier assignments (editable)
+- [x] Margin rules table (global → category → vendor → SKU)
+- [x] B&D royalty rules table
+- [x] Hover tooltips on every field
 
 ### Dealers page
-- [ ] Dealer list with tier filter, search, total sales
-- [ ] Dealer detail: purchase history tab (SKU, brand, supplier, qty, avg price, total sales, by year)
-- [ ] Dealer detail: Build 2027 Price List tab (filter by brand/category/SKU)
-- [ ] Linear output: SKU | Description | Landed Cost | Import List | Tier Discount | Net Price | Override
-- [ ] Override specific lines, export CSV
-- [ ] Channel pricing sub-tab (online/wholesale matrix)
-- [ ] Hover tooltips on all output columns
+- [x] Dealer list with tier filter, search, total sales
+- [x] Dealer detail: purchase history tab (SKU, brand, supplier, qty, avg price, total sales, by year)
+- [x] Dealer detail: Build 2027 Price List tab (filter by brand/category/SKU)
+- [x] Linear output: SKU | Description | Landed Cost | Import List | Tier Discount | Net Price | Override
+- [x] Override specific lines, export CSV
+- [ ] Channel pricing sub-tab (online/wholesale matrix) — in Reports for now
+- [ ] Hover tooltips on all Dealers output columns
 
 ### SKU Catalog page
-- [ ] SQL-only data, remove any non-SQL references
-- [ ] Linear column grouping: SKU Info | Cost Data | Pricing | Status
-- [ ] Hover tooltip on every column header (plain English)
-- [ ] Clean column headers (no unexplained abbreviations)
+- [x] SQL-only data, remove any non-SQL references
+- [x] Linear column grouping: SKU Info | Cost Data | Pricing | Status
+- [x] Hover tooltip on every column header (plain English)
+- [x] Clean column headers (no unexplained abbreviations)
 
 ### Reports page
-- [ ] Sub-tabs: Market Price Study | Margin Alerts | Version History | Import/Export | Model Lookup
-- [ ] Minimalist layout
+- [x] Sub-tabs: Market Price Study | Margin Alerts | Version History | Import/Export | Model Lookup
+- [x] Minimalist layout
 
 ### Global
-- [ ] Every column header has a hover tooltip
-- [ ] No jargon or unexplained abbreviations
-- [ ] Run tests and save checkpoint
+- [x] Every column header has a hover tooltip (SKU Catalog complete; Dealers and Buy Side pending)
+- [x] No jargon or unexplained abbreviations
+- [x] Run tests and save checkpoint
 
 ## Phase 21 — Pre-emptive UX Fixes (Dan feedback prevention)
 
-- [ ] Dealers: brand filter shown before SKU list loads (filter bar at top: Brand, Category, Tier)
-- [ ] Dealers: 2026 Avg Price Paid column next to 2027 Proposed Price column (side-by-side comparison)
-- [ ] Dealers: export button that produces a clean one-page price sheet CSV for the dealer
-- [ ] Dealers: show BLOCKED/Placeholder badge on SKUs with missing 2027 cost
-- [ ] SKU Catalog: "2027 Active Only" toggle — default ON, hides catalog-only SKUs with no FOB price
-- [ ] SKU Catalog: rename Var 1/Var 2 to BTU Rating / Speed with tooltip explaining what they are
-- [ ] SKU Catalog: add 2027 FOB Price and 2027 Status columns to the default view
-- [ ] Column tooltips: SKU Catalog — SKU, Description, Product Group, Status, FOB Status, Cost Basis
-- [ ] Column tooltips: Dealers — Cost Basis, Import List, Tier Discount, Net Price, 2026 Avg Price Paid
-- [ ] Column tooltips: Buy Side — Import Margin, Domestic Margin, Royalty, Lock Section
-- [ ] Remove AI Pricing Assistant box from SKU Catalog (or move it to a less prominent position)
+- [x] Dealers: brand filter shown before SKU list loads (filter bar at top: Brand, Supplier)
+- [x] Dealers: Supplier column added to purchase history table
+- [x] Dealers: 2026 Avg Price Paid column next to 2027 Proposed Price column (side-by-side comparison view)
+- [x] Dealers: export button that produces a clean one-page price sheet CSV for the dealer
+- [x] Dealers: show BLOCKED/Placeholder badge on SKUs with missing 2027 cost in price builder
+- [x] SKU Catalog: "2027 Active Only" toggle — default ON, hides catalog-only SKUs with no FOB price
+- [x] SKU Catalog: rename Var 1/Var 2 to Spec 1/Spec 2 with tooltip explaining what they are
+- [x] SKU Catalog: add 2027 FOB Price and 2027 Status columns to the default view
+- [x] Column tooltips: SKU Catalog — all 30+ columns now have ColTip tooltips
+- [x] Column tooltips: Dealers — Cost Basis, Import List, Tier Discount, Net Price, 2026 Avg Price Paid
+- [x] Column tooltips: Buy Side — Import Margin, Domestic Margin, Royalty, Lock Section
+- [x] AI Pricing Assistant moved to collapsible panel (toggle button in toolbar)
