@@ -10,6 +10,7 @@ import SupplySide from "./pages/SupplySide";
 import BuySide from "./pages/BuySide";
 import Dealers from "./pages/Dealers";
 import Reports from "./pages/Reports";
+import ReleaseNotes from "./pages/ReleaseNotes";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
         <Route path={"/buy-side"} component={BuySide} />
         <Route path={"/dealers"} component={Dealers} />
         <Route path={"/reports"} component={Reports} />
+        <Route path={"/release-notes"} component={ReleaseNotes} />
         <Route path={"/sku/:id"}>
           {(params) => <SKUDetail skuId={Number(params.id)} />}
         </Route>

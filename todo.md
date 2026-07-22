@@ -434,3 +434,11 @@
 - [x] Mobile pass: Dealers — DealerList filter bar flex-wrap, stats cards compact on mobile
 - [x] Mobile pass: Dealers — ComparisonView, PriceListBuilder, PurchaseHistoryView filter bars flex-wrap with full-width inputs on mobile
 - [x] Run tests (72 passing) and save checkpoint
+
+## Phase 24 — Release Notes Page
+
+- [x] New page: /release-notes — full version history with what changed, what to test, what was removed
+- [x] Each version entry: version tag, date, summary, "What's New", "What to Test", "Removed/Moved" sections
+- [x] Sidebar nav entry: "Release Notes" with changelog icon
+- [x] Current version badge in sidebar footer (Latest badge on v23 card)
+- [x] Run tests and save checkpoint

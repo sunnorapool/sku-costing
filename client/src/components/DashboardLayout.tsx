@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, PanelLeft, Waves, Package, Settings, Users, BarChart2, Truck } from "lucide-react";
+import { LayoutDashboard, PanelLeft, Waves, Package, Settings, Users, BarChart2, Truck, Megaphone } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -32,6 +32,7 @@ const menuItems = [
   { icon: Settings, label: "Buy Side", path: "/buy-side" },
   { icon: Users, label: "Dealers", path: "/dealers" },
   { icon: BarChart2, label: "Reports", path: "/reports" },
+  { icon: Megaphone, label: "Release Notes", path: "/release-notes" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
