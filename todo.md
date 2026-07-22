@@ -423,3 +423,14 @@
 - [x] Frontend: AI responses can include "Apply this change" confirm buttons for actionable suggestions
 - [x] Frontend: Panel remembers which page the user is on and passes that context to the AI
 - [x] Run tests and save checkpoint
+
+## Phase 23 — Mobile Pass + Ruben AI Rebrand
+
+- [x] AI assistant: rename to Ruben, add greeting "Hi, I'm Ruben!", make floating button more noticeable (large avatar, "Ask Ruben" hover label, green online dot)
+- [x] AI panel mobile: full-screen overlay on mobile, backdrop tap-to-close, close button always visible in header
+- [x] AI panel desktop: 390px card, gradient blue header, Ruben avatar in messages
+- [x] Mobile pass: BuySide — global margins grid-cols-1 sm:grid-cols-2, locks grid-cols-1 sm:grid-cols-2
+- [x] Mobile pass: SKUTable — all filter selects w-full sm:w-[fixed] so they don't overflow on mobile
+- [x] Mobile pass: Dealers — DealerList filter bar flex-wrap, stats cards compact on mobile
+- [x] Mobile pass: Dealers — ComparisonView, PriceListBuilder, PurchaseHistoryView filter bars flex-wrap with full-width inputs on mobile
+- [x] Run tests (72 passing) and save checkpoint

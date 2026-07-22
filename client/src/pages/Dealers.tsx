@@ -99,18 +99,18 @@ function DealerList({ onSelect }: { onSelect: (id: number, name: string, tier: n
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-8 h-8 text-xs"
+            className="pl-8 h-8 text-xs w-full"
             placeholder="Search dealers…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={tierFilter} onValueChange={setTierFilter}>
-          <SelectTrigger className="h-8 text-xs w-36">
+          <SelectTrigger className="h-8 text-xs w-full sm:w-36">
             <SelectValue placeholder="All tiers" />
           </SelectTrigger>
           <SelectContent>
@@ -377,10 +377,10 @@ function ComparisonView({ dealerId, dealerName, dealerTier }: {
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-8 h-8 text-xs"
+            className="pl-8 h-8 text-xs w-full"
             placeholder="Search SKU or description…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -388,7 +388,7 @@ function ComparisonView({ dealerId, dealerName, dealerTier }: {
           />
         </div>
         <Select value={brandFilter} onValueChange={setBrandFilter}>
-          <SelectTrigger className="h-8 text-xs w-40">
+          <SelectTrigger className="h-8 text-xs w-full sm:w-40">
             <SelectValue placeholder="All Brands" />
           </SelectTrigger>
           <SelectContent>
@@ -541,28 +541,28 @@ function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; deale
     <div className="space-y-4">
       {/* Summary cards */}
       {summary && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xl font-bold">{Number(summary.totalSkus).toLocaleString()}</div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg border p-2 sm:p-3 text-center">
+            <div className="text-base sm:text-xl font-bold">{Number(summary.totalSkus).toLocaleString()}</div>
             <div className="text-xs text-muted-foreground mt-0.5">SKUs Purchased</div>
           </div>
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xl font-bold">{fmt$(summary.totalSales, 0)}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Total Sales (2025–26)</div>
+          <div className="rounded-lg border p-2 sm:p-3 text-center">
+            <div className="text-base sm:text-xl font-bold">{fmt$(summary.totalSales, 0)}</div>
+            <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Total Sales (2025–26)</div>
           </div>
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xl font-bold">{fmt$(summary.avgRealizedPrice)}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Avg Realized Price</div>
+          <div className="rounded-lg border p-2 sm:p-3 text-center">
+            <div className="text-base sm:text-xl font-bold">{fmt$(summary.avgRealizedPrice)}</div>
+            <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Avg Realized Price</div>
           </div>
         </div>
       )}
 
       {/* Search + filters + export */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-8 h-8 text-xs w-52"
+            className="pl-8 h-8 text-xs w-full sm:w-52"
             placeholder="Search SKU or description…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -570,7 +570,7 @@ function PurchaseHistoryView({ dealerId, dealerName }: { dealerId: number; deale
           />
         </div>
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v)}>
-          <SelectTrigger className="h-8 text-xs w-44">
+          <SelectTrigger className="h-8 text-xs w-full sm:w-44">
             <SelectValue placeholder="All brands" />
           </SelectTrigger>
           <SelectContent>
@@ -744,10 +744,10 @@ function PriceListBuilder({ dealerId, dealerName, dealerTier }: {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-8 h-8 text-xs w-52"
+            className="pl-8 h-8 text-xs w-full sm:w-52"
             placeholder="Search SKU or description…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -755,7 +755,7 @@ function PriceListBuilder({ dealerId, dealerName, dealerTier }: {
           />
         </div>
         <Select value={brandFilter} onValueChange={(v) => { setBrandFilter(v); setPage(1); }}>
-          <SelectTrigger className="h-8 text-xs w-40">
+          <SelectTrigger className="h-8 text-xs w-full sm:w-40">
             <SelectValue placeholder="All brands" />
           </SelectTrigger>
           <SelectContent>
@@ -764,7 +764,7 @@ function PriceListBuilder({ dealerId, dealerName, dealerTier }: {
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setPage(1); }}>
-          <SelectTrigger className="h-8 text-xs w-44">
+          <SelectTrigger className="h-8 text-xs w-full sm:w-44">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -773,7 +773,7 @@ function PriceListBuilder({ dealerId, dealerName, dealerTier }: {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-          <SelectTrigger className="h-8 text-xs w-40">
+          <SelectTrigger className="h-8 text-xs w-full sm:w-40">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>

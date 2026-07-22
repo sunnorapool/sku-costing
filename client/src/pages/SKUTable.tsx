@@ -644,7 +644,7 @@ export default function SKUTable() {
         </div>
 
         <Select value={productGroup || "_all"} onValueChange={v => { setProductGroup(v === "_all" ? "" : v); setPage(0); }}>
-          <SelectTrigger className="h-9 w-[200px] text-sm bg-white">
+          <SelectTrigger className="h-9 w-full sm:w-[200px] text-sm bg-white">
             <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
             <SelectValue placeholder="All Product Groups" />
           </SelectTrigger>
@@ -657,7 +657,7 @@ export default function SKUTable() {
         </Select>
 
         <Select value={statusFilter || "_all"} onValueChange={v => { setStatusFilter(v === "_all" ? "" : v); setPage(0); }}>
-          <SelectTrigger className="h-9 w-[160px] text-sm bg-white">
+          <SelectTrigger className="h-9 w-full sm:w-[160px] text-sm bg-white">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -669,7 +669,7 @@ export default function SKUTable() {
         </Select>
 
         <Select value={sourceStatusFilter || "_all"} onValueChange={v => { setSourceStatusFilter(v === "_all" ? "" : v); setPage(0); }}>
-          <SelectTrigger className="h-9 w-[200px] text-sm bg-white">
+          <SelectTrigger className="h-9 w-full sm:w-[200px] text-sm bg-white">
             <SelectValue placeholder="All Source Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -681,7 +681,7 @@ export default function SKUTable() {
         </Select>
 
         <Select value={supplierFilter || "_all"} onValueChange={v => { setSupplierFilter(v === "_all" ? "" : v); setPage(0); }}>
-          <SelectTrigger className="h-9 w-[160px] text-sm bg-white">
+          <SelectTrigger className="h-9 w-full sm:w-[160px] text-sm bg-white">
             <SelectValue placeholder="All Suppliers" />
           </SelectTrigger>
           <SelectContent>

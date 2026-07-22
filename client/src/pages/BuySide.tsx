@@ -173,7 +173,7 @@ function PricingRulesTab() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="rounded-lg bg-muted/50 p-4 text-center">
               <div className={`text-2xl font-bold ${globalRule?.importMarginPct ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
                 {globalRule?.importMarginPct ? fmtPct(globalRule.importMarginPct) : "Not set"}
@@ -205,7 +205,7 @@ function PricingRulesTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             {[1, 2, 3].map((tier) => {
               const t = (data?.tiers ?? []).find((x) => x.tier === tier);
               return (
@@ -472,7 +472,7 @@ function LocksTab() {
       <p className="text-sm text-muted-foreground">
         Lock a section to prevent accidental edits to cost inputs or pricing rules. Each section has its own password.
       </p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
           { scope: "supply" as const, label: "Supply Side", desc: "Freight rates, tariff rates, HTS codes, FOB prices", lock: supplyLock },
           { scope: "buy" as const, label: "Buy Side", desc: "Tier discounts, margin rules, pricing configuration", lock: buyLock },
