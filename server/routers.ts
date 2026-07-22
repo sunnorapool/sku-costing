@@ -32,6 +32,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { dealerPricingRouter } from "./routers/dealerPricing";
 import { supplySideRouter } from "./routers/supplySide";
 import { marketPricesRouter } from "./routers/marketPrices";
+import { aiAssistantRouter } from "./routers/aiAssistant";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,7 @@ export const appRouter = router({
   dealerPricing: dealerPricingRouter,
   supplySide: supplySideRouter,
   marketPrices: marketPricesRouter,
+  aiAssistant: aiAssistantRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

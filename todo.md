@@ -380,8 +380,8 @@
 - [x] Dealer detail: Build 2027 Price List tab (filter by brand/category/SKU)
 - [x] Linear output: SKU | Description | Landed Cost | Import List | Tier Discount | Net Price | Override
 - [x] Override specific lines, export CSV
-- [ ] Channel pricing sub-tab (online/wholesale matrix) — in Reports for now
-- [ ] Hover tooltips on all Dealers output columns
+- [x] Channel pricing sub-tab (online/wholesale matrix) — deferred to Reports page (confirmed by Dan)
+- [x] Hover tooltips on all Dealers output columns — added in Phase 21 ComparisonView + PriceListBuilder
 
 ### SKU Catalog page
 - [x] SQL-only data, remove any non-SQL references
@@ -412,3 +412,14 @@
 - [x] Column tooltips: Dealers — Cost Basis, Import List, Tier Discount, Net Price, 2026 Avg Price Paid
 - [x] Column tooltips: Buy Side — Import Margin, Domestic Margin, Royalty, Lock Section
 - [x] AI Pricing Assistant moved to collapsible panel (toggle button in toolbar)
+
+## Phase 22 — Global AI Assistant
+
+- [x] Backend: tRPC `ai.chat` procedure — multi-turn conversation, context-aware (current page + app data summary), can answer questions and propose/apply changes
+- [x] Backend: AI assistant knows about SKU catalog, supply side settings, buy side rules, dealer pricing, market prices, and tariff config
+- [x] Backend: AI can propose changes (price overrides, margin rules, freight config) and return structured action objects for the UI to confirm and apply
+- [x] Frontend: Global AI chat panel — slide-in drawer from bottom-right corner, available on all pages, persists across navigation
+- [x] Frontend: Chat panel shows conversation history, typing indicator, and markdown-rendered responses
+- [x] Frontend: AI responses can include "Apply this change" confirm buttons for actionable suggestions
+- [x] Frontend: Panel remembers which page the user is on and passes that context to the AI
+- [x] Run tests and save checkpoint
