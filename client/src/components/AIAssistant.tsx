@@ -300,14 +300,15 @@ export function AIAssistant() {
           {/* Panel — full screen on mobile, fixed card on desktop */}
           <div
             className={[
-              "fixed z-50 bg-background flex flex-col overflow-hidden",
-              // Mobile: full screen
+              "fixed z-50 bg-background flex flex-col",
+              // Mobile: full screen, no overflow on the outer panel
               "inset-0 sm:inset-auto",
               // Desktop: bottom-right card
               "sm:bottom-5 sm:right-5 sm:w-[390px] sm:rounded-2xl sm:border sm:shadow-2xl",
-              // Height
-              "sm:h-[560px]",
+              // Height — explicit on both mobile and desktop
+              "h-full sm:h-[560px]",
             ].join(" ")}
+            style={{ maxHeight: "100dvh" }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-blue-600 to-indigo-600 shrink-0">
@@ -345,8 +346,8 @@ export function AIAssistant() {
               </div>
             </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 px-4 py-3">
+            {/* Messages — flex-1 with min-h-0 so it shrinks and scrolls inside the panel */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
               <div className="flex flex-col gap-3 pb-2">
                 {messages.map((msg, i) => (
                   <MessageBubble key={i} msg={msg} onActionApplied={() => {}} />
@@ -383,7 +384,7 @@ export function AIAssistant() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Input */}
             <div className="px-3 pb-4 pt-2 border-t bg-muted/10 shrink-0">

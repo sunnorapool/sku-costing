@@ -247,13 +247,15 @@ export const dealerPricingRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error('DB unavailable');
-      await db
-        .update(tierDiscounts)
-        .set({
-          discountPct: input.discountPct.toString(),
-          notes: input.notes ?? null,
-        })
-        .where(eq(tierDiscounts.tier, input.tier));
+      // Upsert: insert if row missing, update if it exists
+      // This prevents silent no-op when tier_discounts table has no row for this tier
+      await db.execute(
+        sql`INSERT INTO tier_discounts (tier, discount_pct, notes)
+            VALUES (${input.tier}, ${input.discountPct.toString()}, ${input.notes ?? null})
+            ON DUPLICATE KEY UPDATE
+              discount_pct = VALUES(discount_pct),
+              notes = VALUES(notes)`
+      );
       return { success: true };
     }),
 

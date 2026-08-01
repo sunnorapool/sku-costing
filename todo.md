@@ -442,3 +442,9 @@
 - [x] Sidebar nav entry: "Release Notes" with changelog icon
 - [x] Current version badge in sidebar footer (Latest badge on v23 card)
 - [x] Run tests and save checkpoint
+
+## Phase 25 — Dan's Bug Reports
+
+- [x] Bug: Buy Side tier discount save not working — root cause: tier_discounts table was empty (0 rows), UPDATE silently did nothing. Fixed by seeding rows + switching to INSERT ... ON DUPLICATE KEY UPDATE (upsert)
+- [x] Bug: Ruben chat panel scroll broken — replaced ScrollArea with overflow-y-auto + min-h-0 + explicit panel height so messages scroll inside the panel, not behind it
+- [x] Run tests and save checkpoint
