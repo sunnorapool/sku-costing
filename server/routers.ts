@@ -33,6 +33,7 @@ import { dealerPricingRouter } from "./routers/dealerPricing";
 import { supplySideRouter } from "./routers/supplySide";
 import { marketPricesRouter } from "./routers/marketPrices";
 import { aiAssistantRouter } from "./routers/aiAssistant";
+import { feedbackRouter } from "./routers/feedbackRouter";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ export const appRouter = router({
   supplySide: supplySideRouter,
   marketPrices: marketPricesRouter,
   aiAssistant: aiAssistantRouter,
+  feedback: feedbackRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

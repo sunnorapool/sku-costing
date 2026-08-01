@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Archive, BarChart2, Download, HelpCircle, Loader2, RefreshCw, Search, Upload } from "lucide-react";
+import { AlertTriangle, Archive, BarChart2, CheckCircle2, Download, HelpCircle, Loader2, MessageSquarePlus, RefreshCw, Search, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -50,7 +50,7 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-type ReportTab = "market" | "alerts" | "versions" | "snapshots" | "import";
+type ReportTab = "market" | "alerts" | "versions" | "snapshots" | "import" | "feedback";
 
 // ─── Market Price Study ───────────────────────────────────────────────────────
 
@@ -658,12 +658,80 @@ function ImportExportTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+function FeedbackTab() {
+  const [showResolved, setShowResolved] = useState(false);
+  const { data, isLoading, refetch } = trpc.feedback.list.useQuery({ showResolved });
+  const resolve = trpc.feedback.resolve.useMutation({ onSuccess: () => refetch() });
+  const TYPE_COLORS: Record<string, string> = { bug: "bg-red-100 text-red-700", suggestion: "bg-blue-100 text-blue-700", question: "bg-purple-100 text-purple-700", other: "bg-gray-100 text-gray-600" };
+  const TYPE_LABELS: Record<string, string> = { bug: "🐛 Bug", suggestion: "💡 Suggestion", question: "❓ Question", other: "💬 Note" };
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">Tester Feedback</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Submitted via the Feedback button or Ruben. Mark items resolved when addressed.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input type="checkbox" checked={showResolved} onChange={e => setShowResolved(e.target.checked)} className="rounded" />
+            Show resolved
+          </label>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => refetch()}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+          </Button>
+        </div>
+      </div>
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-sm">Loading feedback…</span></div>
+      ) : !data || data.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-12 text-center">
+          <MessageSquarePlus className="h-8 w-8 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">No feedback yet.</p>
+          <p className="text-xs text-muted-foreground/70">Testers can use the amber Feedback tab on any page.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b bg-muted/40">
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-32">Date</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-24">Tester</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-24">Page</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-24">Type</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Message</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-20">Source</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-24">Status</th>
+            </tr></thead>
+            <tbody>
+              {data.map((row) => (
+                <tr key={row.id} className={`border-b last:border-0 hover:bg-muted/20 ${row.resolved ? "opacity-50" : ""}`}>
+                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(row.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                  <td className="px-3 py-2 text-xs font-medium">{row.testerName ?? <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{row.page ?? "—"}</td>
+                  <td className="px-3 py-2"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${TYPE_COLORS[row.type] ?? "bg-gray-100 text-gray-600"}`}>{TYPE_LABELS[row.type] ?? row.type}</span></td>
+                  <td className="px-3 py-2 text-xs max-w-xs">{row.message}</td>
+                  <td className="px-3 py-2"><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${row.source === "ruben" ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700"}`}>{row.source === "ruben" ? "Ruben" : "Button"}</span></td>
+                  <td className="px-3 py-2">
+                    <button onClick={() => resolve.mutate({ id: row.id, resolved: !row.resolved })} className={`flex items-center gap-1 text-[11px] font-medium transition-colors ${row.resolved ? "text-green-600 hover:text-muted-foreground" : "text-muted-foreground hover:text-green-600"}`}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />{row.resolved ? "Resolved" : "Mark done"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS: { key: ReportTab; label: string; icon: React.ReactNode }[] = [
   { key: "market", label: "Market Price Study", icon: <BarChart2 className="h-3.5 w-3.5" /> },
   { key: "alerts", label: "Margin Alerts", icon: <AlertTriangle className="h-3.5 w-3.5" /> },
   { key: "versions", label: "Version History", icon: <RefreshCw className="h-3.5 w-3.5" /> },
   { key: "snapshots", label: "Snapshots", icon: <Archive className="h-3.5 w-3.5" /> },
   { key: "import", label: "Import / Export", icon: <Download className="h-3.5 w-3.5" /> },
+  { key: "feedback", label: "Feedback", icon: <MessageSquarePlus className="h-3.5 w-3.5" /> },
 ];
 
 export default function Reports() {
@@ -700,6 +768,7 @@ export default function Reports() {
       {activeTab === "versions" && <VersionHistoryTab />}
       {activeTab === "snapshots" && <SnapshotsTab />}
       {activeTab === "import" && <ImportExportTab />}
+      {activeTab === "feedback" && <FeedbackTab />}
     </div>
   );
 }

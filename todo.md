@@ -448,3 +448,13 @@
 - [x] Bug: Buy Side tier discount save not working — root cause: tier_discounts table was empty (0 rows), UPDATE silently did nothing. Fixed by seeding rows + switching to INSERT ... ON DUPLICATE KEY UPDATE (upsert)
 - [x] Bug: Ruben chat panel scroll broken — replaced ScrollArea with overflow-y-auto + min-h-0 + explicit panel height so messages scroll inside the panel, not behind it
 - [x] Run tests and save checkpoint
+
+## Phase 26 — Feedback System
+
+- [x] Schema: add feedback table (id, page, type: bug/suggestion/question/other, message, tester_name, created_at)
+- [x] Backend: tRPC submitFeedback (public) and listFeedback (public) procedures
+- [x] Frontend: floating "Feedback" tab button pinned to right edge of screen on every page
+- [x] Frontend: feedback form — name, type selector, message, current page auto-filled, submit
+- [x] Frontend: Ruben accepts feedback via chat ("I found a bug...", "suggestion: ...") and logs it
+- [x] Frontend: Reports page — new Feedback tab showing all submissions (page, type, tester, message, timestamp)
+- [x] Run tests and save checkpoint

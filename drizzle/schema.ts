@@ -486,3 +486,18 @@ export const customerSkuSales = mysqlTable("customer_sku_sales", {
 
 export type CustomerSkuSale = typeof customerSkuSales.$inferSelect;
 export type InsertCustomerSkuSale = typeof customerSkuSales.$inferInsert;
+
+// ─── Tester Feedback ──────────────────────────────────────────────────────────
+// Submitted via the floating Feedback button or via Ruben AI assistant.
+export const feedback = mysqlTable("feedback", {
+  id: int("id").autoincrement().primaryKey(),
+  testerName: varchar("tester_name", { length: 128 }),
+  page: varchar("page", { length: 128 }), // e.g. 'dealers', 'buy-side', 'sku-catalog'
+  type: mysqlEnum("type", ["bug", "suggestion", "question", "other"]).default("other").notNull(),
+  message: text("message").notNull(),
+  source: mysqlEnum("source", ["button", "ruben"]).default("button").notNull(),
+  resolved: int("resolved").default(0).notNull(), // 0 = open, 1 = resolved
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Feedback = typeof feedback.$inferSelect;
+export type InsertFeedback = typeof feedback.$inferInsert;

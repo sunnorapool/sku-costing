@@ -25,6 +25,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { AIAssistant } from './AIAssistant';
+import { FeedbackButton } from './FeedbackButton';
 
 const menuItems = [
   { icon: LayoutDashboard, label: "SKU Catalog", path: "/" },
@@ -57,7 +58,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
         {children}
       </DashboardLayoutContent>
-      <AIAssistant />
+        <AIAssistant />
+        <FeedbackButton />
     </SidebarProvider>
   );
 }
