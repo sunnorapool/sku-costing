@@ -11,12 +11,14 @@ import BuySide from "./pages/BuySide";
 import Dealers from "./pages/Dealers";
 import Reports from "./pages/Reports";
 import ReleaseNotes from "./pages/ReleaseNotes";
+import QuickLookup from "./pages/QuickLookup";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
   return (
     <DashboardLayout>
       <Switch>
+        <Route path={"/quick-lookup"} component={QuickLookup} />
         <Route path={"/"} component={SKUTable} />
         <Route path={"/supply-side"} component={SupplySide} />
         <Route path={"/buy-side"} component={BuySide} />

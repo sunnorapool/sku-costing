@@ -458,3 +458,11 @@
 - [x] Frontend: Ruben accepts feedback via chat ("I found a bug...", "suggestion: ...") and logs it
 - [x] Frontend: Reports page — new Feedback tab showing all submissions (page, type, tester, message, timestamp)
 - [x] Run tests and save checkpoint
+
+## Phase 27 — Quick Lookup + Tariff Updates + Carton Dims
+
+- [x] Tariff: update Section 301 rate to 12.5% across all HTS codes that had it, zero out Section 122
+- [x] Quick Lookup page: single search bar, returns SKU card with landed cost, tariff breakdown, carton dims, tier net prices (read-only)
+- [x] Quick Lookup: add to sidebar nav as first item (most prominent position for Chuck)
+- [x] SKU Catalog: carton dims already visible in SKU detail view; Quick Lookup page shows them prominently on every search result
+- [x] Run tests and save checkpoint

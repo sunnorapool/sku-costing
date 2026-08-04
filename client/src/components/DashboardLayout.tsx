@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, PanelLeft, Waves, Package, Settings, Users, BarChart2, Truck } from "lucide-react";
+import { LayoutDashboard, PanelLeft, Waves, Package, Settings, Users, BarChart2, Truck, Zap } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -28,6 +28,7 @@ import { AIAssistant } from './AIAssistant';
 import { FeedbackButton } from './FeedbackButton';
 
 const menuItems = [
+  { icon: Zap, label: "Quick Lookup", path: "/quick-lookup" },
   { icon: LayoutDashboard, label: "SKU Catalog", path: "/" },
   { icon: Truck, label: "Supply Side", path: "/supply-side" },
   { icon: Settings, label: "Buy Side", path: "/buy-side" },

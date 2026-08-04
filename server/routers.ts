@@ -262,6 +262,39 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Quick Lookup (Chuck's daily tool) ────────────────────────────────────
+  quickLookup: router({
+    search: publicProcedure
+      .input(z.object({ query: z.string().min(1).max(100) }))
+      .query(async ({ input }) => {
+        const results = await getSkuList({ search: input.query, limit: 8 });
+        return results.items.map(({ sku, pricing }) => ({
+          id: sku.id,
+          skuCode: sku.sku,
+          description: sku.description,
+          productGroup: sku.productGroup,
+          supplier: sku.supplier,
+          htsCode: sku.htsCode,
+          fob2027Price: sku.fob2027Price,
+          fob2027Status: sku.fob2027Status,
+          cartonL: sku.cartonL,
+          cartonW: sku.cartonW,
+          cartonH: sku.cartonH,
+          grossWtKg: sku.grossWtKg,
+          netWtKg: sku.netWtKg,
+          pcsPerCarton: sku.pcsPerCarton,
+          landedCost: pricing?.landedCost,
+          tariffPct: pricing?.tariffPct,
+          tariffAmt: pricing?.tariffAmt,
+          dutyAmt: pricing?.dutyAmt,
+          srp2024: pricing?.srp2024,
+          map: pricing?.map,
+          fob26Costing: pricing?.fob26Costing,
+        }));
+      }),
+  }),
+
+
   // ─── AI Prompt ──────────────────────────────────────────────────────────────
   ai: router({
     prompt: publicProcedure
