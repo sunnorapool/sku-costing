@@ -7,6 +7,7 @@ import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { feedback } from "../../drizzle/schema";
 import { desc, eq } from "drizzle-orm";
+import { notifyOwner } from "../_core/notification";
 
 export const feedbackRouter = router({
   submit: publicProcedure
@@ -30,6 +31,16 @@ export const feedbackRouter = router({
         source: input.source,
         resolved: 0,
       });
+
+      // Send email notification to owner
+      const typeLabel = input.type.charAt(0).toUpperCase() + input.type.slice(1);
+      const fromLabel = input.testerName ? `from ${input.testerName}` : "(anonymous)";
+      const pageLabel = input.page ? ` on ${input.page}` : "";
+      await notifyOwner({
+        title: `[SKU Tool] ${typeLabel} ${fromLabel}${pageLabel}`,
+        content: `Type: ${typeLabel}\nFrom: ${input.testerName || "Anonymous"}\nPage: ${input.page || "Unknown"}\nSource: ${input.source}\n\n${input.message}`,
+      }).catch(() => {}); // fire-and-forget — don't fail the submission if notification fails
+
       return { success: true };
     }),
 
